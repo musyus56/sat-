@@ -44,7 +44,7 @@
             top: 10px;
             right: 15px;
             font-size: 12px;
-            background: #f39c12;
+            background: #27ae60;
             padding: 5px 10px;
             border-radius: 20px;
             color: white;
@@ -127,6 +127,12 @@
             border-left: 5px solid #3498db;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
         
         .card-header {
@@ -136,6 +142,11 @@
             margin-bottom: 10px;
             flex-wrap: wrap;
             gap: 10px;
+        }
+        
+        .card-header h3 {
+            color: #2c3e50;
+            font-size: 18px;
         }
         
         .badge {
@@ -212,6 +223,51 @@
             padding: 20px;
             color: #3498db;
         }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #27ae60;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            z-index: 2000;
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translate(-50%, 100px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(52,152,219,0.3);
+        }
+        
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card .label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
@@ -232,21 +288,37 @@
         <div class="content">
             <div id="loading" class="loading" style="display: none;">Yükleniyor...</div>
             
+            <!-- MAĞAZALAR -->
             <div id="magazalar" class="section active">
                 <h2 class="section-title">🏪 Mağazalar</h2>
+                
+                <!-- Toplam İstatistikler -->
+                <div class="stats-container" id="anaSayfaIstatistikler">
+                    <div class="stat-card">
+                        <div class="number" id="toplamSiparisSayisi">0</div>
+                        <div class="label">Toplam Sipariş</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="toplamCiro">0 TL</div>
+                        <div class="label">Toplam Ciro</div>
+                    </div>
+                </div>
+                
                 <button class="btn" onclick="magazaEkle()">➕ Yeni Mağaza</button>
                 <div id="magazaListesi"></div>
             </div>
             
+            <!-- ÜRÜNLER -->
             <div id="urunler" class="section">
                 <h2 class="section-title">📦 Ürünler</h2>
                 <button class="btn" onclick="urunEkle()">➕ Yeni Ürün</button>
                 <div id="urunListesi"></div>
             </div>
             
+            <!-- SİPARİŞLER -->
             <div id="siparisler" class="section">
                 <h2 class="section-title">📝 Siparişler</h2>
-                <select id="siparisFilter" onchange="siparisleriGoster()" style="width: 100%; padding: 12px; margin-bottom: 15px;">
+                <select id="siparisFilter" onchange="siparisleriGoster()" style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 2px solid #ddd;">
                     <option value="tumu">Tümü</option>
                     <option value="hazırlanıyor">Hazırlanıyor</option>
                     <option value="üretimde">Üretimde</option>
@@ -256,6 +328,7 @@
                 <div id="siparisListesi"></div>
             </div>
             
+            <!-- RAPORLAR -->
             <div id="raporlar" class="section">
                 <h2 class="section-title">📊 Raporlar</h2>
                 <div id="raporlarIcerik"></div>
@@ -267,13 +340,12 @@
         <div class="modal-content" id="modalContent"></div>
     </div>
 
-    <!-- FIREBASE MODULE -->
-    <script type="module">
-        // Firebase import
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, where, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
-        
-        // Your Firebase config
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyBiZaA7naifrOaQqB6UNNpxjtS6XfRLzaI",
             authDomain: "satis-61b63.firebaseapp.com",
@@ -285,35 +357,22 @@
         };
 
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
         
-        // Firebase'i global yap
-        window.db = db;
-        window.collection = collection;
-        window.addDoc = addDoc;
-        window.onSnapshot = onSnapshot;
-        window.doc = doc;
-        window.updateDoc = updateDoc;
-        window.deleteDoc = deleteDoc;
-        window.query = query;
-        window.orderBy = orderBy;
-        window.where = where;
-        window.getDocs = getDocs;
+        // Test bağlantısı
+        db.collection("test").doc("test").set({test: true})
+            .then(() => {
+                console.log("✅ Firebase yazma testi başarılı");
+                document.getElementById('syncStatus').textContent = '✅ Bağlandı';
+                document.getElementById('syncStatus').style.background = '#27ae60';
+            })
+            .catch((error) => {
+                console.error("❌ Firebase yazma hatası:", error);
+                document.getElementById('syncStatus').textContent = '❌ Yetki Yok';
+                document.getElementById('syncStatus').style.background = '#e74c3c';
+            });
         
-        console.log("✅ Firebase bağlandı!");
-        
-        // Sync status
-        const syncStatus = document.getElementById('syncStatus');
-        syncStatus.textContent = '✅ Bağlandı';
-        syncStatus.style.background = '#27ae60';
-        
-        // Verileri yükle
-        window.verileriYukle();
-    </script>
-
-    <!-- NORMAL SCRIPT -->
-    <script>
         // Değişkenler
         let magazalar = [];
         let urunler = [];
@@ -323,53 +382,63 @@
         const modalContent = document.getElementById('modalContent');
         
         // Sayfa yüklendiğinde
-        window.verileriYukle = function() {
-            showLoading(true);
-            
-            try {
-                // Mağazaları dinle
-                onSnapshot(collection(db, "magazalar"), (snapshot) => {
-                    magazalar = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    magazalariGoster();
-                });
-                
-                // Ürünleri dinle
-                onSnapshot(collection(db, "urunler"), (snapshot) => {
-                    urunler = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    if (urunler.length === 0) {
-                        ornekUrunleriEkle();
-                    } else {
-                        urunleriGoster();
-                    }
-                });
-                
-                // Siparişleri dinle
-                const q = query(collection(db, "siparisler"), orderBy("tarih", "desc"));
-                onSnapshot(q, (snapshot) => {
-                    siparisler = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    siparisleriGoster();
-                    raporlariGoster();
-                });
-                
-            } catch (error) {
-                console.error("Firebase hatası:", error);
-                document.getElementById('syncStatus').textContent = '❌ Hata';
-                document.getElementById('syncStatus').style.background = '#e74c3c';
-            }
-            
-            showLoading(false);
+        window.onload = function() {
+            verileriDinle();
         };
         
-        // Örnek ürünler
+        function toast(mesaj, basarili = true) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.background = basarili ? '#27ae60' : '#e74c3c';
+            toast.textContent = mesaj;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        function verileriDinle() {
+            showLoading(true);
+            
+            // Mağazalar
+            db.collection("magazalar").onSnapshot((snapshot) => {
+                magazalar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                magazalariGoster();
+                anaSayfaIstatistikleriGuncelle();
+            }, (error) => {
+                console.error("Mağaza hatası:", error);
+            });
+            
+            // Ürünler
+            db.collection("urunler").onSnapshot((snapshot) => {
+                urunler = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (urunler.length === 0) {
+                    ornekUrunleriEkle();
+                } else {
+                    urunleriGoster();
+                }
+            });
+            
+            // Siparişler
+            db.collection("siparisler").orderBy("tarih", "desc").onSnapshot((snapshot) => {
+                siparisler = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                siparisleriGoster();
+                raporlariGoster();
+                magazalariGoster(); // Mağaza listesini güncelle
+                anaSayfaIstatistikleriGuncelle();
+            });
+            
+            showLoading(false);
+        }
+        
+        // Ana sayfa istatistiklerini güncelle
+        function anaSayfaIstatistikleriGuncelle() {
+            const aktifSiparisler = siparisler.filter(s => s.durum !== 'iptal');
+            const toplamSiparis = aktifSiparisler.length;
+            const toplamCiro = aktifSiparisler.reduce((t, s) => t + (s.toplam || 0), 0);
+            
+            document.getElementById('toplamSiparisSayisi').textContent = toplamSiparis;
+            document.getElementById('toplamCiro').textContent = toplamCiro + ' TL';
+        }
+        
         async function ornekUrunleriEkle() {
             const ornekler = [
                 { ad: 'Stres Topu', renkler: ['Mavi', 'Kırmızı', 'Yeşil'], fiyat: 15, stok: 100 },
@@ -378,7 +447,11 @@
             ];
             
             for (let urun of ornekler) {
-                await addDoc(collection(db, "urunler"), urun);
+                try {
+                    await db.collection("urunler").add(urun);
+                } catch (error) {
+                    console.error("Örnek ürün eklenemedi:", error);
+                }
             }
         }
         
@@ -404,6 +477,10 @@
             document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(section).classList.add('active');
             event.target.classList.add('active');
+            
+            if (section === 'magazalar') {
+                anaSayfaIstatistikleriGuncelle();
+            }
         }
         
         // MAĞAZA İŞLEMLERİ
@@ -433,60 +510,70 @@
             const ad = document.getElementById('magazaAd')?.value;
             if (!ad) { alert('Mağaza adı gerekli'); return; }
             
-            await addDoc(collection(db, "magazalar"), {
-                ad: ad,
-                yetkili: document.getElementById('magazaYetkili')?.value || '',
-                tel: document.getElementById('magazaTel')?.value || '',
-                adres: document.getElementById('magazaAdres')?.value || '',
-                tarih: new Date().toLocaleDateString('tr-TR')
-            });
-            
-            modalKapa();
+            try {
+                await db.collection("magazalar").add({
+                    ad: ad,
+                    yetkili: document.getElementById('magazaYetkili')?.value || '',
+                    tel: document.getElementById('magazaTel')?.value || '',
+                    adres: document.getElementById('magazaAdres')?.value || '',
+                    tarih: new Date().toLocaleDateString('tr-TR')
+                });
+                modalKapa();
+                toast('Mağaza eklendi!');
+            } catch (error) {
+                console.error("Kayıt hatası:", error);
+                toast('Kayıt hatası!', false);
+            }
         };
         
         function magazalariGoster() {
             const liste = document.getElementById('magazaListesi');
             if (magazalar.length === 0) {
-                liste.innerHTML = '<p style="text-align:center;">Mağaza yok</p>';
+                liste.innerHTML = '<p style="text-align:center; color:#999;">Henüz mağaza eklenmemiş</p>';
                 return;
             }
             
             let html = '';
             magazalar.forEach(m => {
-                const sip = siparisler.filter(s => s.magazaId === m.id && s.durum !== 'iptal');
-                const toplam = sip.reduce((t, s) => t + s.toplam, 0);
+                // Bu mağazaya ait iptal edilmemiş siparişler
+                const magazaSiparisler = siparisler.filter(s => s.magazaId === m.id && s.durum !== 'iptal');
+                const siparisSayisi = magazaSiparisler.length;
+                const toplamCiro = magazaSiparisler.reduce((t, s) => t + (s.toplam || 0), 0);
                 
                 html += `
                     <div class="card" onclick="magazaDetay('${m.id}')">
                         <div class="card-header">
                             <h3>🏪 ${m.ad}</h3>
-                            <span style="background:#3498db; color:white; padding:5px 10px; border-radius:20px;">${sip.length}</span>
+                            <span style="background:#3498db; color:white; padding:5px 10px; border-radius:20px;">${siparisSayisi} sipariş</span>
                         </div>
-                        <p>👤 ${m.yetkili || '-'}</p>
-                        <p>💰 ${toplam} TL</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <p>👤 ${m.yetkili || 'Yetkili yok'}</p>
+                            <p style="color: #27ae60; font-weight: bold; font-size: 18px;">💰 ${toplamCiro} TL</p>
+                        </div>
+                        <p style="color: #7f8c8d; font-size: 13px;">📞 ${m.tel || 'Tel yok'}</p>
                     </div>
                 `;
             });
             liste.innerHTML = html;
         }
         
-        window.magazaDetay = async function(id) {
+        window.magazaDetay = function(id) {
             const m = magazalar.find(m => m.id === id);
             if (!m) return;
             
             const sip = siparisler.filter(s => s.magazaId === id);
-            const toplam = sip.filter(s => s.durum !== 'iptal').reduce((t, s) => t + s.toplam, 0);
+            const toplam = sip.filter(s => s.durum !== 'iptal').reduce((t, s) => t + (s.toplam || 0), 0);
             
             let sipHtml = '';
             sip.forEach(s => {
                 sipHtml += `
-                    <div class="card" style="border-left-color: ${s.durum === 'teslim' ? '#27ae60' : s.durum === 'üretimde' ? '#3498db' : '#f39c12'};" onclick="siparisDetay('${s.id}')">
-                        <div style="display:flex; justify-content:space-between;">
+                    <div class="card" style="border-left-color: ${s.durum === 'teslim' ? '#27ae60' : s.durum === 'üretimde' ? '#3498db' : s.durum === 'iptal' ? '#e74c3c' : '#f39c12'};" onclick="siparisDetay('${s.id}')">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                             <span class="badge badge-${s.durum}">${s.durum}</span>
                             <small>${s.tarih}</small>
                         </div>
-                        <p>${s.urunler.map(u => `${u.adet} ${u.urun}`).join(', ')}</p>
-                        <p><strong>${s.toplam} TL</strong></p>
+                        <p style="margin-bottom:5px;">📦 ${s.urunler.map(u => `${u.adet} ${u.urun}`).join(', ')}</p>
+                        <p style="font-weight:bold; color:#2c3e50;">💰 ${s.toplam} TL</p>
                     </div>
                 `;
             });
@@ -497,17 +584,40 @@
                     <button class="close-modal" onclick="modalKapa()">×</button>
                 </div>
                 <div style="background:#e8f4fd; padding:15px; border-radius:10px; margin-bottom:15px;">
-                    <p><strong>Yetkili:</strong> ${m.yetkili || '-'}</p>
-                    <p><strong>Tel:</strong> ${m.tel || '-'}</p>
+                    <p><strong>👤 Yetkili:</strong> ${m.yetkili || '-'}</p>
+                    <p><strong>📞 Tel:</strong> ${m.tel || '-'}</p>
+                    <p><strong>📍 Adres:</strong> ${m.adres || '-'}</p>
                 </div>
                 <div style="background:#f8f9fa; padding:15px; text-align:center; border-radius:10px; margin-bottom:15px;">
-                    <div style="font-size:36px; color:#3498db;">${toplam} TL</div>
-                    <div>Toplam Ciro</div>
+                    <div style="font-size:36px; color:#3498db; font-weight:bold;">${toplam} TL</div>
+                    <div style="color:#7f8c8d;">Toplam Ciro (İptal Hariç)</div>
                 </div>
-                <button class="btn btn-success" onclick="siparisEkle('${m.id}')">➕ Yeni Sipariş</button>
-                <h3 style="margin:15px 0;">Siparişler</h3>
-                ${sipHtml || '<p>Sipariş yok</p>'}
+                <button class="btn btn-success" onclick="siparisEkle('${m.id}')">➕ Yeni Sipariş Ekle</button>
+                <h3 style="margin:15px 0 10px 0;">📋 Sipariş Geçmişi</h3>
+                ${sipHtml || '<p style="text-align:center; color:#999;">Henüz sipariş yok</p>'}
+                <button class="btn btn-danger" onclick="magazaSil('${m.id}')" style="margin-top:15px;">🗑 Mağazayı Sil</button>
             `);
+        };
+        
+        window.magazaSil = async function(id) {
+            if (confirm('Bu mağazayı silmek istediğinize emin misiniz? Tüm siparişleri de silinecek!')) {
+                try {
+                    // Önce mağazaya ait siparişleri sil
+                    const siparislerQuery = await db.collection("siparisler").where("magazaId", "==", id).get();
+                    siparislerQuery.forEach(async (doc) => {
+                        await db.collection("siparisler").doc(doc.id).delete();
+                    });
+                    
+                    // Sonra mağazayı sil
+                    await db.collection("magazalar").doc(id).delete();
+                    
+                    modalKapa();
+                    toast('Mağaza ve siparişleri silindi!');
+                } catch (error) {
+                    console.error("Silme hatası:", error);
+                    toast('Silme hatası!', false);
+                }
+            }
         };
         
         // ÜRÜN İŞLEMLERİ
@@ -537,18 +647,28 @@
             
             const renkler = document.getElementById('urunRenkler')?.value.split(',').map(r => r.trim()).filter(r => r);
             
-            await addDoc(collection(db, "urunler"), {
-                ad: ad,
-                renkler: renkler.length ? renkler : ['Standart'],
-                fiyat: parseFloat(fiyat),
-                stok: 100
-            });
-            
-            modalKapa();
+            try {
+                await db.collection("urunler").add({
+                    ad: ad,
+                    renkler: renkler.length ? renkler : ['Standart'],
+                    fiyat: parseFloat(fiyat),
+                    stok: 100
+                });
+                modalKapa();
+                toast('Ürün eklendi!');
+            } catch (error) {
+                console.error("Kayıt hatası:", error);
+                toast('Kayıt hatası!', false);
+            }
         };
         
         function urunleriGoster() {
             const liste = document.getElementById('urunListesi');
+            if (urunler.length === 0) {
+                liste.innerHTML = '<p style="text-align:center; color:#999;">Henüz ürün eklenmemiş</p>';
+                return;
+            }
+            
             let html = '';
             urunler.forEach(u => {
                 html += `
@@ -558,13 +678,14 @@
                             <span style="background:#27ae60; color:white; padding:5px 10px; border-radius:20px;">${u.fiyat} TL</span>
                         </div>
                         <p>🎨 ${u.renkler.join(', ')}</p>
+                        <p style="color:#7f8c8d;">📦 Stok: ${u.stok || 100}</p>
                     </div>
                 `;
             });
             liste.innerHTML = html;
         }
         
-        window.urunDetay = async function(id) {
+        window.urunDetay = function(id) {
             const u = urunler.find(u => u.id === id);
             if (!u) return;
             
@@ -576,7 +697,7 @@
                 <div style="background:#e8f4fd; padding:15px; border-radius:10px;">
                     <p><strong>Renkler:</strong> ${u.renkler.join(', ')}</p>
                     <p><strong>Fiyat:</strong> ${u.fiyat} TL</p>
-                    <p><strong>Stok:</strong> ${u.stok}</p>
+                    <p><strong>Stok:</strong> ${u.stok || 100}</p>
                 </div>
                 <div style="display:flex; gap:10px; margin-top:20px;">
                     <button class="btn btn-success" onclick="urunDuzenle('${u.id}')">✏ Düzenle</button>
@@ -585,7 +706,7 @@
             `);
         };
         
-        window.urunDuzenle = async function(id) {
+        window.urunDuzenle = function(id) {
             const u = urunler.find(u => u.id === id);
             modalAc(`
                 <div class="modal-header">
@@ -606,18 +727,29 @@
             const fiyat = document.getElementById('duzenFiyat')?.value;
             const renkler = document.getElementById('duzenRenkler')?.value.split(',').map(r => r.trim());
             
-            await updateDoc(doc(db, "urunler", id), {
-                fiyat: parseFloat(fiyat),
-                renkler: renkler
-            });
-            
-            modalKapa();
+            try {
+                await db.collection("urunler").doc(id).update({
+                    fiyat: parseFloat(fiyat),
+                    renkler: renkler
+                });
+                modalKapa();
+                toast('Ürün güncellendi!');
+            } catch (error) {
+                console.error("Güncelleme hatası:", error);
+                toast('Güncelleme hatası!', false);
+            }
         };
         
         window.urunSil = async function(id) {
-            if (confirm('Silmek istediğinize emin misiniz?')) {
-                await deleteDoc(doc(db, "urunler", id));
-                modalKapa();
+            if (confirm('Bu ürünü silmek istediğinize emin misiniz?')) {
+                try {
+                    await db.collection("urunler").doc(id).delete();
+                    modalKapa();
+                    toast('Ürün silindi!');
+                } catch (error) {
+                    console.error("Silme hatası:", error);
+                    toast('Silme hatası!', false);
+                }
             }
         };
         
@@ -635,9 +767,12 @@
             let urunListHtml = '';
             urunler.forEach(u => {
                 urunListHtml += `
-                    <div class="product-item" onclick="urunSec('${u.id}')" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;">
-                        <b>${u.ad}</b> - ${u.fiyat} TL<br>
-                        <small>${u.renkler.join(', ')}</small>
+                    <div class="product-item" onclick="urunSec('${u.id}')" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; hover:background:#f0f2f5;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <b>${u.ad}</b>
+                            <span style="color:#27ae60;">${u.fiyat} TL</span>
+                        </div>
+                        <small style="color:#7f8c8d;">${u.renkler.join(', ')}</small>
                     </div>
                 `;
             });
@@ -647,10 +782,12 @@
             currentSiparis.urunler.forEach((u, i) => {
                 toplam += u.adet * u.fiyat;
                 sepetHtml += `
-                    <div style="background:#f0f2f5; padding:10px; margin-bottom:5px; border-radius:10px;">
-                        <b>${u.urun}</b> - ${u.renk}<br>
-                        ${u.adet} x ${u.fiyat} TL = ${u.adet * u.fiyat} TL
-                        <button onclick="sepetSil(${i})" style="float:right;">🗑</button>
+                    <div style="background:#f0f2f5; padding:10px; margin-bottom:5px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <b>${u.urun}</b> - ${u.renk}<br>
+                            ${u.adet} x ${u.fiyat} TL = ${u.adet * u.fiyat} TL
+                        </div>
+                        <button onclick="sepetSil(${i})" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">🗑</button>
                     </div>
                 `;
             });
@@ -659,20 +796,20 @@
             if (seciliUrun) {
                 let renkBtn = '';
                 seciliUrun.renkler.forEach(r => {
-                    renkBtn += `<button onclick="renkSec('${r}')" style="margin:5px; padding:10px; ${seciliRenk === r ? 'background:#3498db; color:white;' : ''}">${r}</button>`;
+                    renkBtn += `<button onclick="renkSec('${r}')" style="margin:5px; padding:10px; border:2px solid ${seciliRenk === r ? '#3498db' : '#ddd'}; background:${seciliRenk === r ? '#3498db' : 'white'}; color:${seciliRenk === r ? 'white' : '#2c3e50'}; border-radius:10px; cursor:pointer;">${r}</button>`;
                 });
                 
                 secimHtml = `
-                    <div style="border:2px solid #3498db; padding:15px; border-radius:10px; margin:15px 0;">
-                        <h3>${seciliUrun.ad}</h3>
-                        <div>${renkBtn}</div>
-                        <div style="display:flex; gap:10px; margin:10px 0;">
-                            <button onclick="adetDegistir(-1)">-</button>
-                            <input type="number" id="seciliAdet" value="${seciliAdet}" min="1" style="width:60px; text-align:center;">
-                            <button onclick="adetDegistir(1)">+</button>
+                    <div style="border:2px solid #3498db; padding:15px; border-radius:10px; margin:15px 0; background:#f8f9fa;">
+                        <h3 style="margin-bottom:10px;">${seciliUrun.ad}</h3>
+                        <div style="margin-bottom:10px;">${renkBtn}</div>
+                        <div style="display:flex; gap:10px; align-items:center; margin:10px 0;">
+                            <button onclick="adetDegistir(-1)" style="width:40px; height:40px; background:#3498db; color:white; border:none; border-radius:10px; font-size:20px; cursor:pointer;">-</button>
+                            <input type="number" id="seciliAdet" value="${seciliAdet}" min="1" style="width:80px; text-align:center; padding:10px; border:2px solid #3498db; border-radius:10px; font-size:16px;">
+                            <button onclick="adetDegistir(1)" style="width:40px; height:40px; background:#3498db; color:white; border:none; border-radius:10px; font-size:20px; cursor:pointer;">+</button>
                         </div>
-                        <button class="btn btn-success" onclick="sepeteEkle()" ${!seciliRenk ? 'disabled' : ''}>
-                            Sepete Ekle (${seciliAdet * seciliUrun.fiyat} TL)
+                        <button class="btn btn-success" onclick="sepeteEkle()" ${!seciliRenk ? 'disabled style="opacity:0.5;"' : ''}>
+                            ➕ Sepete Ekle (${seciliAdet * seciliUrun.fiyat} TL)
                         </button>
                     </div>
                 `;
@@ -680,29 +817,32 @@
             
             modalAc(`
                 <div class="modal-header">
-                    <h2>📝 Sipariş - ${magaza.ad}</h2>
+                    <h2>📝 Yeni Sipariş - ${magaza.ad}</h2>
                     <button class="close-modal" onclick="modalKapa()">×</button>
                 </div>
                 
-                <input type="text" id="urunArama" placeholder="Ürün ara..." class="form-group" onkeyup="urunAra()">
-                <div style="max-height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:10px; margin-bottom:15px;">
+                <input type="text" id="urunArama" placeholder="🔍 Ürün ara..." class="form-group" onkeyup="urunAra()">
+                <div style="max-height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:10px; margin-bottom:15px;" id="urunListesiModal">
                     ${urunListHtml}
                 </div>
                 
                 ${secimHtml}
                 
-                <h3>Sepet</h3>
-                ${sepetHtml || '<p>Sepet boş</p>'}
+                <h3 style="margin-bottom:10px;">🛒 Sepet</h3>
+                ${sepetHtml || '<p style="text-align:center; color:#999;">Sepet boş</p>'}
                 
-                <div style="background:#2c3e50; color:white; padding:15px; border-radius:10px; font-size:20px; text-align:right; margin:15px 0;">
+                <div style="background:#2c3e50; color:white; padding:15px; border-radius:10px; font-size:24px; text-align:right; margin:15px 0;">
                     TOPLAM: ${toplam} TL
                 </div>
                 
                 <div class="form-group">
-                    <textarea id="siparisNot" rows="2" placeholder="Not...">${currentSiparis.not}</textarea>
+                    <textarea id="siparisNot" rows="2" placeholder="📝 Sipariş notu (varsa)..." style="width:100%; padding:12px; border:2px solid #ddd; border-radius:10px;">${currentSiparis.not}</textarea>
                 </div>
                 
-                <button class="btn btn-success" onclick="siparisKaydet()">Siparişi Tamamla</button>
+                <div class="grid-2">
+                    <button class="btn btn-success" onclick="siparisKaydet()">✅ Siparişi Tamamla</button>
+                    <button class="btn btn-danger" onclick="modalKapa()">❌ İptal</button>
+                </div>
             `);
         }
         
@@ -722,7 +862,8 @@
         
         window.adetDegistir = function(miktar) {
             seciliAdet = Math.max(1, seciliAdet + miktar);
-            document.getElementById('seciliAdet').value = seciliAdet;
+            const input = document.getElementById('seciliAdet');
+            if (input) input.value = seciliAdet;
             const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
             siparisFormGuncelle(magaza);
         };
@@ -757,7 +898,7 @@
             filtreli.forEach(u => {
                 html += `<div onclick="urunSec('${u.id}')" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;"><b>${u.ad}</b> - ${u.fiyat} TL</div>`;
             });
-            document.querySelector('#modal .product-list').innerHTML = html;
+            document.getElementById('urunListesiModal').innerHTML = html || '<p style="padding:10px; text-align:center;">Ürün bulunamadı</p>';
         };
         
         window.sepetSil = function(index) {
@@ -768,31 +909,42 @@
         
         window.siparisKaydet = async function() {
             if (currentSiparis.urunler.length === 0) {
-                alert('Sepet boş!');
+                alert('Sepete en az bir ürün ekleyin!');
                 return;
             }
             
             const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
             const not = document.getElementById('siparisNot')?.value || '';
             
-            await addDoc(collection(db, "siparisler"), {
-                magazaId: currentSiparis.magazaId,
-                magazaAd: magaza.ad,
-                tarih: new Date().toLocaleDateString('tr-TR'),
-                saat: new Date().toLocaleTimeString('tr-TR'),
-                urunler: currentSiparis.urunler,
-                toplam: currentSiparis.urunler.reduce((t, u) => t + (u.adet * u.fiyat), 0),
-                durum: 'hazırlanıyor',
-                not: not,
-                durumGecmisi: [`${new Date().toLocaleDateString()} - Sipariş oluşturuldu`]
-            });
-            
-            modalKapa();
+            try {
+                await db.collection("siparisler").add({
+                    magazaId: currentSiparis.magazaId,
+                    magazaAd: magaza.ad,
+                    tarih: new Date().toLocaleDateString('tr-TR'),
+                    saat: new Date().toLocaleTimeString('tr-TR'),
+                    urunler: currentSiparis.urunler,
+                    toplam: currentSiparis.urunler.reduce((t, u) => t + (u.adet * u.fiyat), 0),
+                    durum: 'hazırlanıyor',
+                    not: not,
+                    durumGecmisi: [`${new Date().toLocaleDateString('tr-TR')} - Sipariş oluşturuldu`]
+                });
+                modalKapa();
+                toast('Sipariş başarıyla kaydedildi!');
+            } catch (error) {
+                console.error("Sipariş hatası:", error);
+                toast('Sipariş kaydedilemedi!', false);
+            }
         };
         
         function siparisleriGoster() {
             const filter = document.getElementById('siparisFilter').value;
             let filtrelenmis = filter === 'tumu' ? siparisler : siparisler.filter(s => s.durum === filter);
+            
+            const liste = document.getElementById('siparisListesi');
+            if (filtrelenmis.length === 0) {
+                liste.innerHTML = '<p style="text-align:center; color:#999;">Sipariş bulunmuyor</p>';
+                return;
+            }
             
             let html = '';
             filtrelenmis.forEach(s => {
@@ -802,15 +954,18 @@
                             <h3>${s.magazaAd}</h3>
                             <span class="badge badge-${s.durum}">${s.durum}</span>
                         </div>
-                        <p>📅 ${s.tarih} | 💰 ${s.toplam} TL</p>
-                        <p>📦 ${s.urunler.map(u => `${u.adet} ${u.urun}`).join(', ')}</p>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <span>📅 ${s.tarih}</span>
+                            <span style="font-weight:bold; color:#27ae60;">💰 ${s.toplam} TL</span>
+                        </div>
+                        <p style="color:#7f8c8d;">📦 ${s.urunler.map(u => `${u.adet} ${u.urun}`).join(', ')}</p>
                     </div>
                 `;
             });
-            document.getElementById('siparisListesi').innerHTML = html || '<p style="text-align:center;">Sipariş yok</p>';
+            liste.innerHTML = html;
         }
         
-        window.siparisDetay = async function(id) {
+        window.siparisDetay = function(id) {
             const s = siparisler.find(s => s.id === id);
             if (!s) return;
             
@@ -819,26 +974,44 @@
                     <h2>📋 Sipariş Detayı</h2>
                     <button class="close-modal" onclick="modalKapa()">×</button>
                 </div>
-                <div style="background:#e8f4fd; padding:15px; border-radius:10px;">
-                    <p><strong>Mağaza:</strong> ${s.magazaAd}</p>
-                    <p><strong>Tarih:</strong> ${s.tarih} ${s.saat}</p>
-                    <p><strong>Durum:</strong> <span class="badge badge-${s.durum}">${s.durum}</span></p>
+                <div style="background:#e8f4fd; padding:15px; border-radius:10px; margin-bottom:15px;">
+                    <p><strong>🏪 Mağaza:</strong> ${s.magazaAd}</p>
+                    <p><strong>📅 Tarih:</strong> ${s.tarih} ${s.saat || ''}</p>
+                    <p><strong>📍 Durum:</strong> <span class="badge badge-${s.durum}">${s.durum}</span></p>
                 </div>
-                <h3 style="margin:15px 0;">Ürünler</h3>
+                
+                <h3 style="margin-bottom:10px;">📦 Ürünler</h3>
                 ${s.urunler.map(u => `
-                    <div style="background:#f0f2f5; padding:10px; border-radius:10px; margin-bottom:5px;">
-                        <b>${u.urun}</b> - ${u.renk}<br>
-                        ${u.adet} x ${u.fiyat} TL = ${u.adet * u.fiyat} TL
+                    <div style="background:#f0f2f5; padding:10px; border-radius:10px; margin-bottom:5px; display:flex; justify-content:space-between;">
+                        <div>
+                            <b>${u.urun}</b> - ${u.renk}<br>
+                            ${u.adet} adet
+                        </div>
+                        <div style="font-weight:bold; color:#27ae60;">
+                            ${u.adet * u.fiyat} TL
+                        </div>
                     </div>
                 `).join('')}
-                <div style="background:#2c3e50; color:white; padding:15px; border-radius:10px; font-size:20px; margin:15px 0;">
+                
+                <div style="background:#2c3e50; color:white; padding:15px; border-radius:10px; font-size:24px; text-align:right; margin:15px 0;">
                     TOPLAM: ${s.toplam} TL
                 </div>
-                ${s.not ? `<div style="background:#fff3cd; padding:10px; border-radius:10px;"><b>Not:</b> ${s.not}</div>` : ''}
+                
+                ${s.not ? `
+                    <div style="background:#fff3cd; padding:10px; border-radius:10px; margin-bottom:15px;">
+                        <b>📝 Not:</b> ${s.not}
+                    </div>
+                ` : ''}
+                
+                <h3 style="margin-bottom:10px;">⏱️ Durum Geçmişi</h3>
+                <div style="background:#f8f9fa; padding:10px; border-radius:10px; margin-bottom:15px;">
+                    ${s.durumGecmisi.map(g => `<p style="margin:5px 0;">• ${g}</p>`).join('')}
+                </div>
+                
                 <div style="display:flex; gap:10px; margin-top:20px;">
-                    <button class="btn btn-success" onclick="siparisDurumGuncelle('${s.id}', 'üretimde')">🏭 Üretim</button>
-                    <button class="btn btn-success" onclick="siparisDurumGuncelle('${s.id}', 'teslim')">✅ Teslim</button>
-                    <button class="btn btn-danger" onclick="siparisDurumGuncelle('${s.id}', 'iptal')">❌ İptal</button>
+                    <button class="btn btn-success" style="flex:1;" onclick="siparisDurumGuncelle('${s.id}', 'üretimde')">🏭 Üretim</button>
+                    <button class="btn btn-success" style="flex:1;" onclick="siparisDurumGuncelle('${s.id}', 'teslim')">✅ Teslim</button>
+                    <button class="btn btn-danger" style="flex:1;" onclick="siparisDurumGuncelle('${s.id}', 'iptal')">❌ İptal</button>
                 </div>
             `);
         };
@@ -846,27 +1019,88 @@
         window.siparisDurumGuncelle = async function(id, yeniDurum) {
             const s = siparisler.find(s => s.id === id);
             if (s) {
-                s.durumGecmisi.push(`${new Date().toLocaleDateString()} - ${yeniDurum}`);
-                await updateDoc(doc(db, "siparisler", id), {
-                    durum: yeniDurum,
-                    durumGecmisi: s.durumGecmisi
-                });
-                modalKapa();
+                s.durumGecmisi.push(`${new Date().toLocaleDateString('tr-TR')} - ${yeniDurum}`);
+                try {
+                    await db.collection("siparisler").doc(id).update({
+                        durum: yeniDurum,
+                        durumGecmisi: s.durumGecmisi
+                    });
+                    modalKapa();
+                    toast('Sipariş durumu güncellendi!');
+                } catch (error) {
+                    console.error("Güncelleme hatası:", error);
+                    toast('Güncelleme hatası!', false);
+                }
             }
         };
         
         function raporlariGoster() {
             const aktif = siparisler.filter(s => s.durum !== 'iptal');
-            const toplam = aktif.reduce((t, s) => t + s.toplam, 0);
+            const toplamSiparis = aktif.length;
+            const toplamCiro = aktif.reduce((t, s) => t + (s.toplam || 0), 0);
+            
+            // Mağaza bazlı satışlar
+            const magazaSatis = {};
+            aktif.forEach(s => {
+                if (!magazaSatis[s.magazaAd]) {
+                    magazaSatis[s.magazaAd] = { adet: 0, ciro: 0 };
+                }
+                magazaSatis[s.magazaAd].adet++;
+                magazaSatis[s.magazaAd].ciro += s.toplam;
+            });
+            
+            // Ürün bazlı satışlar
+            const urunSatis = {};
+            aktif.forEach(s => {
+                s.urunler.forEach(u => {
+                    if (!urunSatis[u.urun]) {
+                        urunSatis[u.urun] = { adet: 0, ciro: 0 };
+                    }
+                    urunSatis[u.urun].adet += u.adet;
+                    urunSatis[u.urun].ciro += u.adet * u.fiyat;
+                });
+            });
+            
+            // En çok satan mağazaları sırala
+            const enIyiMagazalar = Object.entries(magazaSatis)
+                .sort((a, b) => b[1].ciro - a[1].ciro)
+                .slice(0, 3);
+            
+            // En çok satan ürünleri sırala
+            const enIyiUrunler = Object.entries(urunSatis)
+                .sort((a, b) => b[1].ciro - a[1].ciro)
+                .slice(0, 3);
             
             document.getElementById('raporlarIcerik').innerHTML = `
-                <div style="background:#f8f9fa; padding:15px; text-align:center; border-radius:10px; margin-bottom:15px;">
-                    <div style="font-size:36px; color:#3498db;">${aktif.length}</div>
-                    <div>Aktif Sipariş</div>
+                <div class="stats-container" style="margin-bottom:20px;">
+                    <div class="stat-card">
+                        <div class="number">${toplamSiparis}</div>
+                        <div class="label">Toplam Sipariş</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">${toplamCiro} TL</div>
+                        <div class="label">Toplam Ciro</div>
+                    </div>
                 </div>
-                <div style="background:#f8f9fa; padding:15px; text-align:center; border-radius:10px;">
-                    <div style="font-size:36px; color:#3498db;">${toplam} TL</div>
-                    <div>Toplam Ciro</div>
+                
+                <div style="background:#f8f9fa; padding:15px; border-radius:15px; margin-bottom:15px;">
+                    <h3 style="margin-bottom:10px;">🏆 En Çok Satan Mağazalar</h3>
+                    ${enIyiMagazalar.map(([ad, veri], index) => `
+                        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;">
+                            <span>${index+1}. ${ad}</span>
+                            <span style="font-weight:bold;">${veri.ciro} TL (${veri.adet} sipariş)</span>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div style="background:#f8f9fa; padding:15px; border-radius:15px;">
+                    <h3 style="margin-bottom:10px;">📦 En Çok Satan Ürünler</h3>
+                    ${enIyiUrunler.map(([ad, veri], index) => `
+                        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;">
+                            <span>${index+1}. ${ad}</span>
+                            <span style="font-weight:bold;">${veri.ciro} TL (${veri.adet} adet)</span>
+                        </div>
+                    `).join('')}
                 </div>
             `;
         }
