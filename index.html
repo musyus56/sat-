@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>VANA SİS - Firebase Satış Takip</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: #f0f2f5;
+            padding: 15px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        
+        .sync-status {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 12px;
+            background: #f39c12;
+            padding: 5px 10px;
+            border-radius: 20px;
+            color: white;
+        }
+        
+        .menu {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            background: #34495e;
+        }
+        
+        .menu-btn {
+            background: #34495e;
+            color: white;
+            border: none;
+            padding: 15px 5px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .menu-btn.active {
+            background: #3498db;
+        }
+        
+        .content {
+            padding: 20px;
+            min-height: 500px;
+        }
+        
+        .section {
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .btn-small {
+            padding: 8px 15px;
+            font-size: 14px;
+            width: auto;
+            margin: 5px;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+        }
+        
+        .card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 5px solid #3498db;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            cursor: pointer;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .badge-hazırlanıyor { background: #f39c12; color: white; }
+        .badge-üretimde { background: #3498db; color: white; }
+        .badge-teslim { background: #27ae60; color: white; }
+        .badge-iptal { background: #e74c3c; color: white; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗂️ VANA SİS</h1>
+            <p>Firebase ile Bulutta</p>
+            <div id="syncStatus" class="sync-status">Bağlanıyor...</div>
+        </div>
+        
+        <div class="menu">
+            <button class="menu-btn active" onclick="showSection('magazalar')">🏪 Mağazalar</button>
+            <button class="menu-btn" onclick="showSection('urunler')">📦 Ürünler</button>
+            <button class="menu-btn" onclick="showSection('siparisler')">📝 Siparişler</button>
+            <button class="menu-btn" onclick="showSection('raporlar')">📊 Raporlar</button>
+        </div>
+        
+        <div class="content">
+            <div id="loading" class="loading" style="display: none;">Yükleniyor...</div>
+            
+            <div id="magazalar" class="section active">
+                <h2 class="section-title">🏪 Mağazalar</h2>
+                <button class="btn" onclick="magazaEkle()">➕ Yeni Mağaza</button>
+                <div id="magazaListesi"></div>
+            </div>
+            
+            <div id="urunler" class="section">
+                <h2 class="section-title">📦 Ürünler</h2>
+                <button class="btn" onclick="urunEkle()">➕ Yeni Ürün</button>
+                <div id="urunListesi"></div>
+            </div>
+            
+            <div id="siparisler" class="section">
+                <h2 class="section-title">📝 Siparişler</h2>
+                <select id="siparisFilter" onchange="siparisleriGoster()" style="width: 100%; padding: 12px; margin-bottom: 15px;">
+                    <option value="tumu">Tümü</option>
+                    <option value="hazırlanıyor">Hazırlanıyor</option>
+                    <option value="üretimde">Üretimde</option>
+                    <option value="teslim">Teslim</option>
+                    <option value="iptal">İptal</option>
+                </select>
+                <div id="siparisListesi"></div>
+            </div>
+            
+            <div id="raporlar" class="section">
+                <h2 class="section-title">📊 Raporlar</h2>
+                <div id="raporlarIcerik"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content" id="modalContent"></div>
+    </div>
+
+    <!-- FIREBASE MODULE -->
+    <script type="module">
+        // Firebase import
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, where, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+        
+        // Your Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBiZaA7naifrOaQqB6UNNpxjtS6XfRLzaI",
+            authDomain: "satis-61b63.firebaseapp.com",
+            databaseURL: "https://satis-61b63-default-rtdb.firebaseio.com",
+            projectId: "satis-61b63",
+            storageBucket: "satis-61b63.firebasestorage.app",
+            messagingSenderId: "497261575109",
+            appId: "1:497261575109:web:5815cec2ab85da2bdce9ac"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Firebase'i global yap
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.onSnapshot = onSnapshot;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+        window.deleteDoc = deleteDoc;
+        window.query = query;
+        window.orderBy = orderBy;
+        window.where = where;
+        window.getDocs = getDocs;
+        
+        console.log("✅ Firebase bağlandı!");
+        
+        // Sync status
+        const syncStatus = document.getElementById('syncStatus');
+        syncStatus.textContent = '✅ Bağlandı';
+        syncStatus.style.background = '#27ae60';
+        
+        // Verileri yükle
+        window.verileriYukle();
+    </script>
+
+    <!-- NORMAL SCRIPT -->
+    <script>
+        // Değişkenler
+        let magazalar = [];
+        let urunler = [];
+        let siparisler = [];
+        
+        const modal = document.getElementById('modal');
+        const modalContent = document.getElementById('modalContent');
+        
+        // Sayfa yüklendiğinde
+        window.verileriYukle = function() {
+            showLoading(true);
+            
+            try {
+                // Mağazaları dinle
+                onSnapshot(collection(db, "magazalar"), (snapshot) => {
+                    magazalar = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    magazalariGoster();
+                });
+                
+                // Ürünleri dinle
+                onSnapshot(collection(db, "urunler"), (snapshot) => {
+                    urunler = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    if (urunler.length === 0) {
+                        ornekUrunleriEkle();
+                    } else {
+                        urunleriGoster();
+                    }
+                });
+                
+                // Siparişleri dinle
+                const q = query(collection(db, "siparisler"), orderBy("tarih", "desc"));
+                onSnapshot(q, (snapshot) => {
+                    siparisler = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    siparisleriGoster();
+                    raporlariGoster();
+                });
+                
+            } catch (error) {
+                console.error("Firebase hatası:", error);
+                document.getElementById('syncStatus').textContent = '❌ Hata';
+                document.getElementById('syncStatus').style.background = '#e74c3c';
+            }
+            
+            showLoading(false);
+        };
+        
+        // Örnek ürünler
+        async function ornekUrunleriEkle() {
+            const ornekler = [
+                { ad: 'Stres Topu', renkler: ['Mavi', 'Kırmızı', 'Yeşil'], fiyat: 15, stok: 100 },
+                { ad: 'Anahtarlık', renkler: ['Pembe', 'Mavi', 'Mor'], fiyat: 12, stok: 100 },
+                { ad: 'Squishy', renkler: ['Pembe', 'Sarı'], fiyat: 20, stok: 50 }
+            ];
+            
+            for (let urun of ornekler) {
+                await addDoc(collection(db, "urunler"), urun);
+            }
+        }
+        
+        function showLoading(goster) {
+            document.getElementById('loading').style.display = goster ? 'block' : 'none';
+        }
+        
+        function modalAc(html) {
+            modalContent.innerHTML = html;
+            modal.style.display = 'block';
+        }
+        
+        function modalKapa() {
+            modal.style.display = 'none';
+        }
+        
+        window.onclick = function(event) {
+            if (event.target == modal) modalKapa();
+        };
+        
+        function showSection(section) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(section).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // MAĞAZA İŞLEMLERİ
+        window.magazaEkle = function() {
+            modalAc(`
+                <div class="modal-header">
+                    <h2>➕ Yeni Mağaza</h2>
+                    <button class="close-modal" onclick="modalKapa()">×</button>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="magazaAd" placeholder="Mağaza Adı">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="magazaYetkili" placeholder="Yetkili">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="magazaTel" placeholder="Telefon">
+                </div>
+                <div class="form-group">
+                    <textarea id="magazaAdres" rows="2" placeholder="Adres"></textarea>
+                </div>
+                <button class="btn btn-success" onclick="magazaKaydet()">Kaydet</button>
+            `);
+        };
+        
+        window.magazaKaydet = async function() {
+            const ad = document.getElementById('magazaAd')?.value;
+            if (!ad) { alert('Mağaza adı gerekli'); return; }
+            
+            await addDoc(collection(db, "magazalar"), {
+                ad: ad,
+                yetkili: document.getElementById('magazaYetkili')?.value || '',
+                tel: document.getElementById('magazaTel')?.value || '',
+                adres: document.getElementById('magazaAdres')?.value || '',
+                tarih: new Date().toLocaleDateString('tr-TR')
+            });
+            
+            modalKapa();
+        };
+        
+        function magazalariGoster() {
+            const liste = document.getElementById('magazaListesi');
+            if (magazalar.length === 0) {
+                liste.innerHTML = '<p style="text-align:center;">Mağaza yok</p>';
+                return;
+            }
+            
+            let html = '';
+            magazalar.forEach(m => {
+                const sip = siparisler.filter(s => s.magazaId === m.id && s.durum !== 'iptal');
+                const toplam = sip.reduce((t, s) => t + s.toplam, 0);
+                
+                html += `
+                    <div class="card" onclick="magazaDetay('${m.id}')">
+                        <div class="card-header">
+                            <h3>🏪 ${m.ad}</h3>
+                            <span style="background:#3498db; color:white; padding:5px 10px; border-radius:20px;">${sip.length}</span>
+                        </div>
+                        <p>👤 ${m.yetkili || '-'}</p>
+                        <p>💰 ${toplam} TL</p>
+                    </div>
+                `;
+            });
+            liste.innerHTML = html;
+        }
+        
+        window.magazaDetay = async function(id) {
+            const m = magazalar.find(m => m.id === id);
+            if (!m) return;
+            
+            const sip = siparisler.filter(s => s.magazaId === id);
+            const toplam = sip.filter(s => s.durum !== 'iptal').reduce((t, s) => t + s.toplam, 0);
+            
+            let sipHtml = '';
+            sip.forEach(s => {
+                sipHtml += `
+                    <div class="card" style="border-left-color: ${s.durum === 'teslim' ? '#27ae60' : s.durum === 'üretimde' ? '#3498db' : '#f39c12'};" onclick="siparisDetay('${s.id}')">
+                        <div style="display:flex; justify-content:space-between;">
+                            <span class="badge badge-${s.durum}">${s.durum}</span>
+                            <small>${s.tarih}</small>
+                        </div>
+                        <p>${s.urunler.map(u => `${u.adet} ${u.urun}`).join(', ')}</p>
+                        <p><strong>${s.toplam} TL</strong></p>
+                    </div>
+                `;
+            });
+            
+            modalAc(`
+                <div class="modal-header">
+                    <h2>🏪 ${m.ad}</h2>
+                    <button class="close-modal" onclick="modalKapa()">×</button>
+                </div>
+                <div style="background:#e8f4fd; padding:15px; border-radius:10px; margin-bottom:15px;">
+                    <p><strong>Yetkili:</strong> ${m.yetkili || '-'}</p>
+                    <p><strong>Tel:</strong> ${m.tel || '-'}</p>
+                </div>
+                <div style="background:#f8f9fa; padding:15px; text-align:center; border-radius:10px; margin-bottom:15px;">
+                    <div style="font-size:36px; color:#3498db;">${toplam} TL</div>
+                    <div>Toplam Ciro</div>
+                </div>
+                <button class="btn btn-success" onclick="siparisEkle('${m.id}')">➕ Yeni Sipariş</button>
+                <h3 style="margin:15px 0;">Siparişler</h3>
+                ${sipHtml || '<p>Sipariş yok</p>'}
+            `);
+        };
+        
+        // ÜRÜN İŞLEMLERİ
+        window.urunEkle = function() {
+            modalAc(`
+                <div class="modal-header">
+                    <h2>➕ Yeni Ürün</h2>
+                    <button class="close-modal" onclick="modalKapa()">×</button>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="urunAd" placeholder="Ürün Adı">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="urunRenkler" placeholder="Renkler (virgülle)">
+                </div>
+                <div class="form-group">
+                    <input type="number" id="urunFiyat" placeholder="Fiyat">
+                </div>
+                <button class="btn btn-success" onclick="urunKaydet()">Kaydet</button>
+            `);
+        };
+        
+        window.urunKaydet = async function() {
+            const ad = document.getElementById('urunAd')?.value;
+            const fiyat = document.getElementById('urunFiyat')?.value;
+            if (!ad || !fiyat) { alert('Ad ve fiyat gerekli'); return; }
+            
+            const renkler = document.getElementById('urunRenkler')?.value.split(',').map(r => r.trim()).filter(r => r);
+            
+            await addDoc(collection(db, "urunler"), {
+                ad: ad,
+                renkler: renkler.length ? renkler : ['Standart'],
+                fiyat: parseFloat(fiyat),
+                stok: 100
+            });
+            
+            modalKapa();
+        };
+        
+        function urunleriGoster() {
+            const liste = document.getElementById('urunListesi');
+            let html = '';
+            urunler.forEach(u => {
+                html += `
+                    <div class="card" onclick="urunDetay('${u.id}')">
+                        <div class="card-header">
+                            <h3>🏷 ${u.ad}</h3>
+                            <span style="background:#27ae60; color:white; padding:5px 10px; border-radius:20px;">${u.fiyat} TL</span>
+                        </div>
+                        <p>🎨 ${u.renkler.join(', ')}</p>
+                    </div>
+                `;
+            });
+            liste.innerHTML = html;
+        }
+        
+        window.urunDetay = async function(id) {
+            const u = urunler.find(u => u.id === id);
+            if (!u) return;
+            
+            modalAc(`
+                <div class="modal-header">
+                    <h2>🏷 ${u.ad}</h2>
+                    <button class="close-modal" onclick="modalKapa()">×</button>
+                </div>
+                <div style="background:#e8f4fd; padding:15px; border-radius:10px;">
+                    <p><strong>Renkler:</strong> ${u.renkler.join(', ')}</p>
+                    <p><strong>Fiyat:</strong> ${u.fiyat} TL</p>
+                    <p><strong>Stok:</strong> ${u.stok}</p>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button class="btn btn-success" onclick="urunDuzenle('${u.id}')">✏ Düzenle</button>
+                    <button class="btn btn-danger" onclick="urunSil('${u.id}')">🗑 Sil</button>
+                </div>
+            `);
+        };
+        
+        window.urunDuzenle = async function(id) {
+            const u = urunler.find(u => u.id === id);
+            modalAc(`
+                <div class="modal-header">
+                    <h2>✏ ${u.ad}</h2>
+                    <button class="close-modal" onclick="modalKapa()">×</button>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="duzenFiyat" value="${u.fiyat}">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="duzenRenkler" value="${u.renkler.join(', ')}">
+                </div>
+                <button class="btn btn-success" onclick="urunGuncelle('${u.id}')">Güncelle</button>
+            `);
+        };
+        
+        window.urunGuncelle = async function(id) {
+            const fiyat = document.getElementById('duzenFiyat')?.value;
+            const renkler = document.getElementById('duzenRenkler')?.value.split(',').map(r => r.trim());
+            
+            await updateDoc(doc(db, "urunler", id), {
+                fiyat: parseFloat(fiyat),
+                renkler: renkler
+            });
+            
+            modalKapa();
+        };
+        
+        window.urunSil = async function(id) {
+            if (confirm('Silmek istediğinize emin misiniz?')) {
+                await deleteDoc(doc(db, "urunler", id));
+                modalKapa();
+            }
+        };
+        
+        // SİPARİŞ İŞLEMLERİ
+        let currentSiparis = { magazaId: null, urunler: [], not: '' };
+        let seciliUrun = null, seciliRenk = null, seciliAdet = 1;
+        
+        window.siparisEkle = function(magazaId) {
+            const magaza = magazalar.find(m => m.id === magazaId);
+            currentSiparis = { magazaId, urunler: [], not: '' };
+            siparisFormGuncelle(magaza);
+        };
+        
+        function siparisFormGuncelle(magaza) {
+            let urunListHtml = '';
+            urunler.forEach(u => {
+                urunListHtml += `
+                    <div class="product-item" onclick="urunSec('${u.id}')" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;">
+                        <b>${u.ad}</b> - ${u.fiyat} TL<br>
+                        <small>${u.renkler.join(', ')}</small>
+                    </div>
+                `;
+            });
+            
+            let sepetHtml = '';
+            let toplam = 0;
+            currentSiparis.urunler.forEach((u, i) => {
+                toplam += u.adet * u.fiyat;
+                sepetHtml += `
+                    <div style="background:#f0f2f5; padding:10px; margin-bottom:5px; border-radius:10px;">
+                        <b>${u.urun}</b> - ${u.renk}<br>
+                        ${u.adet} x ${u.fiyat} TL = ${u.adet * u.fiyat} TL
+                        <button onclick="sepetSil(${i})" style="float:right;">🗑</button>
+                    </div>
+                `;
+            });
+            
+            let secimHtml = '';
+            if (seciliUrun) {
+                let renkBtn = '';
+                seciliUrun.renkler.forEach(r => {
+                    renkBtn += `<button onclick="renkSec('${r}')" style="margin:5px; padding:10px; ${seciliRenk === r ? 'background:#3498db; color:white;' : ''}">${r}</button>`;
+                });
+                
+                secimHtml = `
+                    <div style="border:2px solid #3498db; padding:15px; border-radius:10px; margin:15px 0;">
+                        <h3>${seciliUrun.ad}</h3>
+                        <div>${renkBtn}</div>
+                        <div style="display:flex; gap:10px; margin:10px 0;">
+                            <button onclick="adetDegistir(-1)">-</button>
+                            <input type="number" id="seciliAdet" value="${seciliAdet}" min="1" style="width:60px; text-align:center;">
+                            <button onclick="adetDegistir(1)">+</button>
+                        </div>
+                        <button class="btn btn-success" onclick="sepeteEkle()" ${!seciliRenk ? 'disabled' : ''}>
+                            Sepete Ekle (${seciliAdet * seciliUrun.fiyat} TL)
+                        </button>
+                    </div>
+                `;
+            }
+            
+            modalAc(`
+                <div class="modal-header">
+                    <h2>📝 Sipariş - ${magaza.ad}</h2>
+                    <button class="close-modal" onclick="modalKapa()">×</button>
+                </div>
+                
+                <input type="text" id="urunArama" placeholder="Ürün ara..." class="form-group" onkeyup="urunAra()">
+                <div style="max-height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:10px; margin-bottom:15px;">
+                    ${urunListHtml}
+                </div>
+                
+                ${secimHtml}
+                
+                <h3>Sepet</h3>
+                ${sepetHtml || '<p>Sepet boş</p>'}
+                
+                <div style="background:#2c3e50; color:white; padding:15px; border-radius:10px; font-size:20px; text-align:right; margin:15px 0;">
+                    TOPLAM: ${toplam} TL
+                </div>
+                
+                <div class="form-group">
+                    <textarea id="siparisNot" rows="2" placeholder="Not...">${currentSiparis.not}</textarea>
+                </div>
+                
+                <button class="btn btn-success" onclick="siparisKaydet()">Siparişi Tamamla</button>
+            `);
+        }
+        
+        window.urunSec = function(id) {
+            seciliUrun = urunler.find(u => u.id === id);
+            seciliRenk = seciliUrun.renkler[0];
+            seciliAdet = 1;
+            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
+            siparisFormGuncelle(magaza);
+        };
+        
+        window.renkSec = function(renk) {
+            seciliRenk = renk;
+            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
+            siparisFormGuncelle(magaza);
+        };
+        
+        window.adetDegistir = function(miktar) {
+            seciliAdet = Math.max(1, seciliAdet + miktar);
+            document.getElementById('seciliAdet').value = seciliAdet;
+            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
+            siparisFormGuncelle(magaza);
+        };
+        
+        window.sepeteEkle = function() {
+            if (!seciliUrun || !seciliRenk) return;
+            
+            const existing = currentSiparis.urunler.findIndex(u => u.urunId === seciliUrun.id && u.renk === seciliRenk);
+            if (existing > -1) {
+                currentSiparis.urunler[existing].adet += seciliAdet;
+            } else {
+                currentSiparis.urunler.push({
+                    urunId: seciliUrun.id,
+                    urun: seciliUrun.ad,
+                    renk: seciliRenk,
+                    adet: seciliAdet,
+                    fiyat: seciliUrun.fiyat
+                });
+            }
+            
+            seciliUrun = null;
+            seciliRenk = null;
+            seciliAdet = 1;
+            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
+            siparisFormGuncelle(magaza);
+        };
+        
+        window.urunAra = function() {
+            const arama = document.getElementById('urunArama')?.value.toLowerCase() || '';
+            const filtreli = urunler.filter(u => u.ad.toLowerCase().includes(arama));
+            let html = '';
+            filtreli.forEach(u => {
+                html += `<div onclick="urunSec('${u.id}')" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;"><b>${u.ad}</b> - ${u.fiyat} TL</div>`;
+            });
+            document.querySelector('#modal .product-list').innerHTML = html;
+        };
+        
+        window.sepetSil = function(index) {
+            currentSiparis.urunler.splice(index, 1);
+            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
+            siparisFormGuncelle(magaza);
+        };
+        
+        window.siparisKaydet = async function() {
+            if (currentSiparis.urunler.length === 0) {
+                alert('Sepet boş!');
+                return;
+            }
+            
+            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
+            const not = document.getElementById('siparisNot')?.value || '';
+            
+            await addDoc(collection(db, "siparisler"), {
+                magazaId: currentSiparis.magazaId,
+                magazaAd: magaza.ad,
+                tarih: new Date().toLocaleDateString('tr-TR'),
+                saat: new Date().toLocaleTimeString('tr-TR'),
+                urunler: currentSiparis.urunler,
+                toplam: currentSiparis.urunler.reduce((t, u) => t + (u.adet * u.fiyat), 0),
+                durum: 'hazırlanıyor',
+                not: not,
+                durumGecmisi: [`${new Date().toLocaleDateString()} - Sipariş oluşturuldu`]
+            });
+            
+            modalKapa();
+        };
+        
+        function siparisleriGoster() {
+            const filter = document.getElementById('siparisFilter').value;
+            let filtrelenmis = filter === 'tumu' ? siparisler : siparisler.filter(s => s.durum === filter);
+            
+            let html = '';
+            filtrelenmis.forEach(s => {
+                html += `
+                    <div class="card" onclick="siparisDetay('${s.id}')">
+                        <div class="card-header">
+                            <h3>${s.magazaAd}</h3>
+                            <span class="badge badge-${s.durum}">${s.durum}</span>
+                        </div>
+                        <p>📅 ${s.tarih} | 💰 ${s.toplam} TL</p>
+                        <p>📦 ${s.urunler.map(u => `${u.adet} ${u.urun}`).join(', ')}</p>
+                    </div>
+                `;
+            });
+            document.getElementById('siparisListesi').innerHTML = html || '<p style="text-align:center;">Sipariş yok</p>';
+        }
+        
+        window.siparisDetay = async function(id) {
+            const s = siparisler.find(s => s.id === id);
+            if (!s) return;
+            
+            modalAc(`
+                <div class="modal-header">
+                    <h2>📋 Sipariş Detayı</h2>
+                    <button class="close-modal" onclick="modalKapa()">×</button>
+                </div>
+                <div style="background:#e8f4fd; padding:15px; border-radius:10px;">
+                    <p><strong>Mağaza:</strong> ${s.magazaAd}</p>
+                    <p><strong>Tarih:</strong> ${s.tarih} ${s.saat}</p>
+                    <p><strong>Durum:</strong> <span class="badge badge-${s.durum}">${s.durum}</span></p>
+                </div>
+                <h3 style="margin:15px 0;">Ürünler</h3>
+                ${s.urunler.map(u => `
+                    <div style="background:#f0f2f5; padding:10px; border-radius:10px; margin-bottom:5px;">
+                        <b>${u.urun}</b> - ${u.renk}<br>
+                        ${u.adet} x ${u.fiyat} TL = ${u.adet * u.fiyat} TL
+                    </div>
+                `).join('')}
+                <div style="background:#2c3e50; color:white; padding:15px; border-radius:10px; font-size:20px; margin:15px 0;">
+                    TOPLAM: ${s.toplam} TL
+                </div>
+                ${s.not ? `<div style="background:#fff3cd; padding:10px; border-radius:10px;"><b>Not:</b> ${s.not}</div>` : ''}
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button class="btn btn-success" onclick="siparisDurumGuncelle('${s.id}', 'üretimde')">🏭 Üretim</button>
+                    <button class="btn btn-success" onclick="siparisDurumGuncelle('${s.id}', 'teslim')">✅ Teslim</button>
+                    <button class="btn btn-danger" onclick="siparisDurumGuncelle('${s.id}', 'iptal')">❌ İptal</button>
+                </div>
+            `);
+        };
+        
+        window.siparisDurumGuncelle = async function(id, yeniDurum) {
+            const s = siparisler.find(s => s.id === id);
+            if (s) {
+                s.durumGecmisi.push(`${new Date().toLocaleDateString()} - ${yeniDurum}`);
+                await updateDoc(doc(db, "siparisler", id), {
+                    durum: yeniDurum,
+                    durumGecmisi: s.durumGecmisi
+                });
+                modalKapa();
+            }
+        };
+        
+        function raporlariGoster() {
+            const aktif = siparisler.filter(s => s.durum !== 'iptal');
+            const toplam = aktif.reduce((t, s) => t + s.toplam, 0);
+            
+            document.getElementById('raporlarIcerik').innerHTML = `
+                <div style="background:#f8f9fa; padding:15px; text-align:center; border-radius:10px; margin-bottom:15px;">
+                    <div style="font-size:36px; color:#3498db;">${aktif.length}</div>
+                    <div>Aktif Sipariş</div>
+                </div>
+                <div style="background:#f8f9fa; padding:15px; text-align:center; border-radius:10px;">
+                    <div style="font-size:36px; color:#3498db;">${toplam} TL</div>
+                    <div>Toplam Ciro</div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
