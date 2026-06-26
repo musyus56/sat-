@@ -1,1109 +1,249 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>VANA SİS - Firebase Satış Takip</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background: #f0f2f5;
-            padding: 15px;
-        }
-        
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .header {
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            position: relative;
-        }
-        
-        .header h1 {
-            font-size: 28px;
-            margin-bottom: 5px;
-        }
-        
-        .sync-status {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 12px;
-            background: #27ae60;
-            padding: 5px 10px;
-            border-radius: 20px;
-            color: white;
-        }
-        
-        .menu {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            background: #34495e;
-        }
-        
-        .menu-btn {
-            background: #34495e;
-            color: white;
-            border: none;
-            padding: 15px 5px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        
-        .menu-btn.active {
-            background: #3498db;
-        }
-        
-        .content {
-            padding: 20px;
-            min-height: 500px;
-        }
-        
-        .section {
-            display: none;
-        }
-        
-        .section.active {
-            display: block;
-        }
-        
-        .section-title {
-            font-size: 20px;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #3498db;
-        }
-        
-        .btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            margin-bottom: 15px;
-        }
-        
-        .btn-small {
-            padding: 8px 15px;
-            font-size: 14px;
-            width: auto;
-            margin: 5px;
-        }
-        
-        .btn-danger {
-            background: #e74c3c;
-        }
-        
-        .btn-success {
-            background: #27ae60;
-        }
-        
-        .card {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-left: 5px solid #3498db;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        .card-header h3 {
-            color: #2c3e50;
-            font-size: 18px;
-        }
-        
-        .badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .badge-hazırlanıyor { background: #f39c12; color: white; }
-        .badge-üretimde { background: #3498db; color: white; }
-        .badge-teslim { background: #27ae60; color: white; }
-        .badge-iptal { background: #e74c3c; color: white; }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            overflow-y: auto;
-            padding: 20px;
-        }
-        
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            max-width: 500px;
-            margin: 20px auto;
-            padding: 20px;
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #3498db;
-        }
-        
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #e74c3c;
-            font-weight: bold;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        .form-group input, .form-group textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            font-size: 16px;
-        }
-        
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #3498db;
-        }
-        
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #27ae60;
-            color: white;
-            padding: 15px 30px;
-            border-radius: 50px;
-            z-index: 2000;
-            animation: slideUp 0.3s ease;
-        }
-        
-        @keyframes slideUp {
-            from { transform: translate(-50%, 100px); opacity: 0; }
-            to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        
-        .stats-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(52,152,219,0.3);
-        }
-        
-        .stat-card .number {
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .stat-card .label {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🗂️ VANA SİS</h1>
-            <p>Firebase ile Bulutta</p>
-            <div id="syncStatus" class="sync-status">Bağlanıyor...</div>
-        </div>
-        
-        <div class="menu">
-            <button class="menu-btn active" onclick="showSection('magazalar')">🏪 Mağazalar</button>
-            <button class="menu-btn" onclick="showSection('urunler')">📦 Ürünler</button>
-            <button class="menu-btn" onclick="showSection('siparisler')">📝 Siparişler</button>
-            <button class="menu-btn" onclick="showSection('raporlar')">📊 Raporlar</button>
-        </div>
-        
-        <div class="content">
-            <div id="loading" class="loading" style="display: none;">Yükleniyor...</div>
-            
-            <!-- MAĞAZALAR -->
-            <div id="magazalar" class="section active">
-                <h2 class="section-title">🏪 Mağazalar</h2>
-                
-                <!-- Toplam İstatistikler -->
-                <div class="stats-container" id="anaSayfaIstatistikler">
-                    <div class="stat-card">
-                        <div class="number" id="toplamSiparisSayisi">0</div>
-                        <div class="label">Toplam Sipariş</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number" id="toplamCiro">0 TL</div>
-                        <div class="label">Toplam Ciro</div>
-                    </div>
-                </div>
-                
-                <button class="btn" onclick="magazaEkle()">➕ Yeni Mağaza</button>
-                <div id="magazaListesi"></div>
-            </div>
-            
-            <!-- ÜRÜNLER -->
-            <div id="urunler" class="section">
-                <h2 class="section-title">📦 Ürünler</h2>
-                <button class="btn" onclick="urunEkle()">➕ Yeni Ürün</button>
-                <div id="urunListesi"></div>
-            </div>
-            
-            <!-- SİPARİŞLER -->
-            <div id="siparisler" class="section">
-                <h2 class="section-title">📝 Siparişler</h2>
-                <select id="siparisFilter" onchange="siparisleriGoster()" style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 2px solid #ddd;">
-                    <option value="tumu">Tümü</option>
-                    <option value="hazırlanıyor">Hazırlanıyor</option>
-                    <option value="üretimde">Üretimde</option>
-                    <option value="teslim">Teslim</option>
-                    <option value="iptal">İptal</option>
-                </select>
-                <div id="siparisListesi"></div>
-            </div>
-            
-            <!-- RAPORLAR -->
-            <div id="raporlar" class="section">
-                <h2 class="section-title">📊 Raporlar</h2>
-                <div id="raporlarIcerik"></div>
-            </div>
-        </div>
-    </div>
+import requests
+from bs4 import BeautifulSoup
+import json
+import os
+import re
+from datetime import datetime
 
-    <div id="modal" class="modal">
-        <div class="modal-content" id="modalContent"></div>
-    </div>
+# === KASA SINIFI ===
+class Kasa:
+    def __init__(self):
+        self.dosya = "kasa_veri.json"
+        self.urunler_dosya = "urunler.json"
+        self.faturalar_dosya = "faturalar.json"
+        self.bakiye = 0
+        self.urunler = []
+        self.faturalar = []
+        self.yukle()
 
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    def yukle(self):
+        # Kasa verileri
+        if os.path.exists(self.dosya):
+            with open(self.dosya, "r", encoding="utf-8") as f:
+                veri = json.load(f)
+                self.bakiye = veri.get("bakiye", 0)
+        
+        # Ürünler
+        if os.path.exists(self.urunler_dosya):
+            with open(self.urunler_dosya, "r", encoding="utf-8") as f:
+                self.urunler = json.load(f)
+        
+        # Faturalar
+        if os.path.exists(self.faturalar_dosya):
+            with open(self.faturalar_dosya, "r", encoding="utf-8") as f:
+                self.faturalar = json.load(f)
+
+    def kaydet(self):
+        with open(self.dosya, "w", encoding="utf-8") as f:
+            json.dump({"bakiye": self.bakiye}, f, ensure_ascii=False, indent=2)
+        with open(self.urunler_dosya, "w", encoding="utf-8") as f:
+            json.dump(self.urunler, f, ensure_ascii=False, indent=2)
+        with open(self.faturalar_dosya, "w", encoding="utf-8") as f:
+            json.dump(self.faturalar, f, ensure_ascii=False, indent=2)
+
+    # === ÜRÜN İŞLEMLERİ ===
+    def urun_ekle(self, ad, fiyat, stok=1):
+        urun = {
+            "id": len(self.urunler) + 1,
+            "ad": ad,
+            "fiyat": fiyat,
+            "stok": stok,
+            "eklenme_tarihi": datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+        self.urunler.append(urun)
+        self.kaydet()
+        return urun
+
+    def urun_listele(self):
+        if not self.urunler:
+            print("📦 Hiç ürün yok.")
+            return
+        print("\n--- ÜRÜN LİSTESİ ---")
+        for u in self.urunler:
+            print(f"ID:{u['id']} | {u['ad']} | {u['fiyat']} TL | Stok:{u['stok']}")
+
+    def urun_fiyat_guncelle(self, urun_id, yeni_fiyat):
+        for u in self.urunler:
+            if u['id'] == urun_id:
+                u['fiyat'] = yeni_fiyat
+                self.kaydet()
+                print(f"✅ Ürün fiyatı güncellendi: {u['ad']} -> {yeni_fiyat} TL")
+                return True
+        print("❌ Ürün bulunamadı.")
+        return False
+
+    # === FATURA İŞLEMLERİ ===
+    def fatura_olustur(self, musteri_bilgileri, urun_ids):
+        sepetteki_urunler = []
+        toplam = 0
+        
+        for id in urun_ids:
+            for u in self.urunler:
+                if u['id'] == id:
+                    sepetteki_urunler.append(u.copy())
+                    toplam += u['fiyat']
+                    break
+        
+        if not sepetteki_urunler:
+            print("❌ Sepet boş!")
+            return
+        
+        fatura = {
+            "fatura_no": len(self.faturalar) + 1,
+            "tarih": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "musteri": musteri_bilgileri,
+            "urunler": sepetteki_urunler,
+            "toplam": toplam,
+            "durum": "Oluşturuldu"  # Sonradan "Faturalandı" olarak değiştirilebilir
+        }
+        
+        self.faturalar.append(fatura)
+        self.bakiye += toplam
+        self.kaydet()
+        
+        print(f"\n✅ FATURA OLUŞTURULDU!")
+        print(f"Fatura No: {fatura['fatura_no']}")
+        print(f"Toplam: {toplam} TL")
+        print(f"Müşteri: {musteri_bilgileri['isim']}")
+        print("Ürünler:")
+        for u in sepetteki_urunler:
+            print(f"  - {u['ad']}: {u['fiyat']} TL")
+        return fatura
+
+    def faturalari_listele(self):
+        if not self.faturalar:
+            print("📄 Hiç fatura yok.")
+            return
+        print("\n--- FATURA LİSTESİ ---")
+        for f in self.faturalar:
+            print(f"No:{f['fatura_no']} | {f['tarih']} | {f['musteri']['isim']} | {f['toplam']} TL | {f['durum']}")
+
+    def fatura_durum_guncelle(self, fatura_no, yeni_durum="Faturalandı"):
+        for f in self.faturalar:
+            if f['fatura_no'] == fatura_no:
+                f['durum'] = yeni_durum
+                self.kaydet()
+                print(f"✅ Fatura {fatura_no} durumu güncellendi: {yeni_durum}")
+                return True
+        print("❌ Fatura bulunamadı.")
+        return False
+
+# === MAKERPAZAR VERİ ÇEKİCİ ===
+def makerpazar_urun_cek(url):
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        
+        # Ürün adı
+        ad_etiketi = soup.find(["h1", "h2", "span"], class_=re.compile("title|name|product-name"))
+        ad = ad_etiketi.text.strip() if ad_etiketi else "Makerpazar Ürünü"
+        
+        # Fiyat
+        fiyat_etiketi = soup.find(["span", "div", "p"], class_=re.compile("price|fiyat|product-price"))
+        if fiyat_etiketi:
+            fiyat_metin = fiyat_etiketi.text.strip()
+            sayi = re.search(r"([\d,\.]+)", fiyat_metin.replace(".", "").replace(",", "."))
+            fiyat = float(sayi.group(1)) if sayi else 0
+        else:
+            fiyat = 0
+        
+        return {"ad": ad, "fiyat": fiyat}
+    except Exception as e:
+        print(f"❌ Veri çekme hatası: {e}")
+        return None
+
+# === ANA PROGRAM ===
+kasa = Kasa()
+
+while True:
+    print("\n" + "="*50)
+    print("🏪 MAKERPAZAR KASA & FATURA SİSTEMİ")
+    print("="*50)
+    print("1. Ürün Ekle (Manuel)")
+    print("2. Makerpazar'dan Ürün Çek ve Ekle")
+    print("3. Ürün Listele")
+    print("4. Ürün Fiyatını Değiştir (Tek seferlik)")
+    print("5. Fatura Oluştur")
+    print("6. Faturaları Listele")
+    print("7. Fatura Durumu Güncelle (Faturalandı/İptal)")
+    print("8. Kasa Raporu")
+    print("9. Çıkış")
+    print("="*50)
     
-    <script>
-        // Firebase Config
-        const firebaseConfig = {
-            apiKey: "AIzaSyBiZaA7naifrOaQqB6UNNpxjtS6XfRLzaI",
-            authDomain: "satis-61b63.firebaseapp.com",
-            databaseURL: "https://satis-61b63-default-rtdb.firebaseio.com",
-            projectId: "satis-61b63",
-            storageBucket: "satis-61b63.firebasestorage.app",
-            messagingSenderId: "497261575109",
-            appId: "1:497261575109:web:5815cec2ab85da2bdce9ac"
-        };
+    secim = input("Seçiminiz: ")
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        
-        // Test bağlantısı
-        db.collection("test").doc("test").set({test: true})
-            .then(() => {
-                console.log("✅ Firebase yazma testi başarılı");
-                document.getElementById('syncStatus').textContent = '✅ Bağlandı';
-                document.getElementById('syncStatus').style.background = '#27ae60';
-            })
-            .catch((error) => {
-                console.error("❌ Firebase yazma hatası:", error);
-                document.getElementById('syncStatus').textContent = '❌ Yetki Yok';
-                document.getElementById('syncStatus').style.background = '#e74c3c';
-            });
-        
-        // Değişkenler
-        let magazalar = [];
-        let urunler = [];
-        let siparisler = [];
-        
-        const modal = document.getElementById('modal');
-        const modalContent = document.getElementById('modalContent');
-        
-        // Sayfa yüklendiğinde
-        window.onload = function() {
-            verileriDinle();
-        };
-        
-        function toast(mesaj, basarili = true) {
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.style.background = basarili ? '#27ae60' : '#e74c3c';
-            toast.textContent = mesaj;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+    if secim == "1":
+        ad = input("Ürün adı: ")
+        fiyat = float(input("Fiyat (TL): "))
+        stok = int(input("Stok adedi: ") or "1")
+        kasa.urun_ekle(ad, fiyat, stok)
+        print("✅ Ürün eklendi!")
+
+    elif secim == "2":
+        url = input("Makerpazar ürün URL'si (tam link): ")
+        veri = makerpazar_urun_cek(url)
+        if veri and veri['fiyat'] > 0:
+            print(f"📦 {veri['ad']} - {veri['fiyat']} TL")
+            onay = input("Bu ürünü eklemek istiyor musun? (e/h): ")
+            if onay.lower() == "e":
+                stok = int(input("Stok adedi: ") or "1")
+                kasa.urun_ekle(veri['ad'], veri['fiyat'], stok)
+                print("✅ Ürün eklendi!")
+        else:
+            print("❌ Ürün bulunamadı veya fiyat çekilemedi.")
+
+    elif secim == "3":
+        kasa.urun_listele()
+
+    elif secim == "4":
+        kasa.urun_listele()
+        urun_id = int(input("Güncellemek istediğin ürün ID: "))
+        yeni_fiyat = float(input("Yeni fiyat (TL): "))
+        kasa.urun_fiyat_guncelle(urun_id, yeni_fiyat)
+
+    elif secim == "5":
+        # Müşteri bilgileri
+        print("\n--- MÜŞTERİ BİLGİLERİ ---")
+        musteri = {
+            "isim": input("Müşteri adı: "),
+            "vergi_no": input("Vergi No: "),
+            "adres": input("Adres: "),
+            "telefon": input("Telefon: "),
+            "email": input("E-posta: ")
         }
         
-        function verileriDinle() {
-            showLoading(true);
-            
-            // Mağazalar
-            db.collection("magazalar").onSnapshot((snapshot) => {
-                magazalar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                magazalariGoster();
-                anaSayfaIstatistikleriGuncelle();
-            }, (error) => {
-                console.error("Mağaza hatası:", error);
-            });
-            
-            // Ürünler
-            db.collection("urunler").onSnapshot((snapshot) => {
-                urunler = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (urunler.length === 0) {
-                    ornekUrunleriEkle();
-                } else {
-                    urunleriGoster();
-                }
-            });
-            
-            // Siparişler
-            db.collection("siparisler").orderBy("tarih", "desc").onSnapshot((snapshot) => {
-                siparisler = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                siparisleriGoster();
-                raporlariGoster();
-                magazalariGoster(); // Mağaza listesini güncelle
-                anaSayfaIstatistikleriGuncelle();
-            });
-            
-            showLoading(false);
-        }
+        # Ürün seçimi
+        kasa.urun_listele()
+        urun_ids = []
+        while True:
+            id = input("Sepete eklemek için ürün ID (bitirmek için '0'): ")
+            if id == "0":
+                break
+            urun_ids.append(int(id))
         
-        // Ana sayfa istatistiklerini güncelle
-        function anaSayfaIstatistikleriGuncelle() {
-            const aktifSiparisler = siparisler.filter(s => s.durum !== 'iptal');
-            const toplamSiparis = aktifSiparisler.length;
-            const toplamCiro = aktifSiparisler.reduce((t, s) => t + (s.toplam || 0), 0);
-            
-            document.getElementById('toplamSiparisSayisi').textContent = toplamSiparis;
-            document.getElementById('toplamCiro').textContent = toplamCiro + ' TL';
-        }
-        
-        async function ornekUrunleriEkle() {
-            const ornekler = [
-                { ad: 'Stres Topu', renkler: ['Mavi', 'Kırmızı', 'Yeşil'], fiyat: 15, stok: 100 },
-                { ad: 'Anahtarlık', renkler: ['Pembe', 'Mavi', 'Mor'], fiyat: 12, stok: 100 },
-                { ad: 'Squishy', renkler: ['Pembe', 'Sarı'], fiyat: 20, stok: 50 }
-            ];
-            
-            for (let urun of ornekler) {
-                try {
-                    await db.collection("urunler").add(urun);
-                } catch (error) {
-                    console.error("Örnek ürün eklenemedi:", error);
-                }
-            }
-        }
-        
-        function showLoading(goster) {
-            document.getElementById('loading').style.display = goster ? 'block' : 'none';
-        }
-        
-        function modalAc(html) {
-            modalContent.innerHTML = html;
-            modal.style.display = 'block';
-        }
-        
-        function modalKapa() {
-            modal.style.display = 'none';
-        }
-        
-        window.onclick = function(event) {
-            if (event.target == modal) modalKapa();
-        };
-        
-        function showSection(section) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(section).classList.add('active');
-            event.target.classList.add('active');
-            
-            if (section === 'magazalar') {
-                anaSayfaIstatistikleriGuncelle();
-            }
-        }
-        
-        // MAĞAZA İŞLEMLERİ
-        window.magazaEkle = function() {
-            modalAc(`
-                <div class="modal-header">
-                    <h2>➕ Yeni Mağaza</h2>
-                    <button class="close-modal" onclick="modalKapa()">×</button>
-                </div>
-                <div class="form-group">
-                    <input type="text" id="magazaAd" placeholder="Mağaza Adı">
-                </div>
-                <div class="form-group">
-                    <input type="text" id="magazaYetkili" placeholder="Yetkili">
-                </div>
-                <div class="form-group">
-                    <input type="text" id="magazaTel" placeholder="Telefon">
-                </div>
-                <div class="form-group">
-                    <textarea id="magazaAdres" rows="2" placeholder="Adres"></textarea>
-                </div>
-                <button class="btn btn-success" onclick="magazaKaydet()">Kaydet</button>
-            `);
-        };
-        
-        window.magazaKaydet = async function() {
-            const ad = document.getElementById('magazaAd')?.value;
-            if (!ad) { alert('Mağaza adı gerekli'); return; }
-            
-            try {
-                await db.collection("magazalar").add({
-                    ad: ad,
-                    yetkili: document.getElementById('magazaYetkili')?.value || '',
-                    tel: document.getElementById('magazaTel')?.value || '',
-                    adres: document.getElementById('magazaAdres')?.value || '',
-                    tarih: new Date().toLocaleDateString('tr-TR')
-                });
-                modalKapa();
-                toast('Mağaza eklendi!');
-            } catch (error) {
-                console.error("Kayıt hatası:", error);
-                toast('Kayıt hatası!', false);
-            }
-        };
-        
-        function magazalariGoster() {
-            const liste = document.getElementById('magazaListesi');
-            if (magazalar.length === 0) {
-                liste.innerHTML = '<p style="text-align:center; color:#999;">Henüz mağaza eklenmemiş</p>';
-                return;
-            }
-            
-            let html = '';
-            magazalar.forEach(m => {
-                // Bu mağazaya ait iptal edilmemiş siparişler
-                const magazaSiparisler = siparisler.filter(s => s.magazaId === m.id && s.durum !== 'iptal');
-                const siparisSayisi = magazaSiparisler.length;
-                const toplamCiro = magazaSiparisler.reduce((t, s) => t + (s.toplam || 0), 0);
-                
-                html += `
-                    <div class="card" onclick="magazaDetay('${m.id}')">
-                        <div class="card-header">
-                            <h3>🏪 ${m.ad}</h3>
-                            <span style="background:#3498db; color:white; padding:5px 10px; border-radius:20px;">${siparisSayisi} sipariş</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <p>👤 ${m.yetkili || 'Yetkili yok'}</p>
-                            <p style="color: #27ae60; font-weight: bold; font-size: 18px;">💰 ${toplamCiro} TL</p>
-                        </div>
-                        <p style="color: #7f8c8d; font-size: 13px;">📞 ${m.tel || 'Tel yok'}</p>
-                    </div>
-                `;
-            });
-            liste.innerHTML = html;
-        }
-        
-        window.magazaDetay = function(id) {
-            const m = magazalar.find(m => m.id === id);
-            if (!m) return;
-            
-            const sip = siparisler.filter(s => s.magazaId === id);
-            const toplam = sip.filter(s => s.durum !== 'iptal').reduce((t, s) => t + (s.toplam || 0), 0);
-            
-            let sipHtml = '';
-            sip.forEach(s => {
-                sipHtml += `
-                    <div class="card" style="border-left-color: ${s.durum === 'teslim' ? '#27ae60' : s.durum === 'üretimde' ? '#3498db' : s.durum === 'iptal' ? '#e74c3c' : '#f39c12'};" onclick="siparisDetay('${s.id}')">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                            <span class="badge badge-${s.durum}">${s.durum}</span>
-                            <small>${s.tarih}</small>
-                        </div>
-                        <p style="margin-bottom:5px;">📦 ${s.urunler.map(u => `${u.adet} ${u.urun}`).join(', ')}</p>
-                        <p style="font-weight:bold; color:#2c3e50;">💰 ${s.toplam} TL</p>
-                    </div>
-                `;
-            });
-            
-            modalAc(`
-                <div class="modal-header">
-                    <h2>🏪 ${m.ad}</h2>
-                    <button class="close-modal" onclick="modalKapa()">×</button>
-                </div>
-                <div style="background:#e8f4fd; padding:15px; border-radius:10px; margin-bottom:15px;">
-                    <p><strong>👤 Yetkili:</strong> ${m.yetkili || '-'}</p>
-                    <p><strong>📞 Tel:</strong> ${m.tel || '-'}</p>
-                    <p><strong>📍 Adres:</strong> ${m.adres || '-'}</p>
-                </div>
-                <div style="background:#f8f9fa; padding:15px; text-align:center; border-radius:10px; margin-bottom:15px;">
-                    <div style="font-size:36px; color:#3498db; font-weight:bold;">${toplam} TL</div>
-                    <div style="color:#7f8c8d;">Toplam Ciro (İptal Hariç)</div>
-                </div>
-                <button class="btn btn-success" onclick="siparisEkle('${m.id}')">➕ Yeni Sipariş Ekle</button>
-                <h3 style="margin:15px 0 10px 0;">📋 Sipariş Geçmişi</h3>
-                ${sipHtml || '<p style="text-align:center; color:#999;">Henüz sipariş yok</p>'}
-                <button class="btn btn-danger" onclick="magazaSil('${m.id}')" style="margin-top:15px;">🗑 Mağazayı Sil</button>
-            `);
-        };
-        
-        window.magazaSil = async function(id) {
-            if (confirm('Bu mağazayı silmek istediğinize emin misiniz? Tüm siparişleri de silinecek!')) {
-                try {
-                    // Önce mağazaya ait siparişleri sil
-                    const siparislerQuery = await db.collection("siparisler").where("magazaId", "==", id).get();
-                    siparislerQuery.forEach(async (doc) => {
-                        await db.collection("siparisler").doc(doc.id).delete();
-                    });
-                    
-                    // Sonra mağazayı sil
-                    await db.collection("magazalar").doc(id).delete();
-                    
-                    modalKapa();
-                    toast('Mağaza ve siparişleri silindi!');
-                } catch (error) {
-                    console.error("Silme hatası:", error);
-                    toast('Silme hatası!', false);
-                }
-            }
-        };
-        
-        // ÜRÜN İŞLEMLERİ
-        window.urunEkle = function() {
-            modalAc(`
-                <div class="modal-header">
-                    <h2>➕ Yeni Ürün</h2>
-                    <button class="close-modal" onclick="modalKapa()">×</button>
-                </div>
-                <div class="form-group">
-                    <input type="text" id="urunAd" placeholder="Ürün Adı">
-                </div>
-                <div class="form-group">
-                    <input type="text" id="urunRenkler" placeholder="Renkler (virgülle)">
-                </div>
-                <div class="form-group">
-                    <input type="number" id="urunFiyat" placeholder="Fiyat">
-                </div>
-                <button class="btn btn-success" onclick="urunKaydet()">Kaydet</button>
-            `);
-        };
-        
-        window.urunKaydet = async function() {
-            const ad = document.getElementById('urunAd')?.value;
-            const fiyat = document.getElementById('urunFiyat')?.value;
-            if (!ad || !fiyat) { alert('Ad ve fiyat gerekli'); return; }
-            
-            const renkler = document.getElementById('urunRenkler')?.value.split(',').map(r => r.trim()).filter(r => r);
-            
-            try {
-                await db.collection("urunler").add({
-                    ad: ad,
-                    renkler: renkler.length ? renkler : ['Standart'],
-                    fiyat: parseFloat(fiyat),
-                    stok: 100
-                });
-                modalKapa();
-                toast('Ürün eklendi!');
-            } catch (error) {
-                console.error("Kayıt hatası:", error);
-                toast('Kayıt hatası!', false);
-            }
-        };
-        
-        function urunleriGoster() {
-            const liste = document.getElementById('urunListesi');
-            if (urunler.length === 0) {
-                liste.innerHTML = '<p style="text-align:center; color:#999;">Henüz ürün eklenmemiş</p>';
-                return;
-            }
-            
-            let html = '';
-            urunler.forEach(u => {
-                html += `
-                    <div class="card" onclick="urunDetay('${u.id}')">
-                        <div class="card-header">
-                            <h3>🏷 ${u.ad}</h3>
-                            <span style="background:#27ae60; color:white; padding:5px 10px; border-radius:20px;">${u.fiyat} TL</span>
-                        </div>
-                        <p>🎨 ${u.renkler.join(', ')}</p>
-                        <p style="color:#7f8c8d;">📦 Stok: ${u.stok || 100}</p>
-                    </div>
-                `;
-            });
-            liste.innerHTML = html;
-        }
-        
-        window.urunDetay = function(id) {
-            const u = urunler.find(u => u.id === id);
-            if (!u) return;
-            
-            modalAc(`
-                <div class="modal-header">
-                    <h2>🏷 ${u.ad}</h2>
-                    <button class="close-modal" onclick="modalKapa()">×</button>
-                </div>
-                <div style="background:#e8f4fd; padding:15px; border-radius:10px;">
-                    <p><strong>Renkler:</strong> ${u.renkler.join(', ')}</p>
-                    <p><strong>Fiyat:</strong> ${u.fiyat} TL</p>
-                    <p><strong>Stok:</strong> ${u.stok || 100}</p>
-                </div>
-                <div style="display:flex; gap:10px; margin-top:20px;">
-                    <button class="btn btn-success" onclick="urunDuzenle('${u.id}')">✏ Düzenle</button>
-                    <button class="btn btn-danger" onclick="urunSil('${u.id}')">🗑 Sil</button>
-                </div>
-            `);
-        };
-        
-        window.urunDuzenle = function(id) {
-            const u = urunler.find(u => u.id === id);
-            modalAc(`
-                <div class="modal-header">
-                    <h2>✏ ${u.ad}</h2>
-                    <button class="close-modal" onclick="modalKapa()">×</button>
-                </div>
-                <div class="form-group">
-                    <input type="number" id="duzenFiyat" value="${u.fiyat}">
-                </div>
-                <div class="form-group">
-                    <input type="text" id="duzenRenkler" value="${u.renkler.join(', ')}">
-                </div>
-                <button class="btn btn-success" onclick="urunGuncelle('${u.id}')">Güncelle</button>
-            `);
-        };
-        
-        window.urunGuncelle = async function(id) {
-            const fiyat = document.getElementById('duzenFiyat')?.value;
-            const renkler = document.getElementById('duzenRenkler')?.value.split(',').map(r => r.trim());
-            
-            try {
-                await db.collection("urunler").doc(id).update({
-                    fiyat: parseFloat(fiyat),
-                    renkler: renkler
-                });
-                modalKapa();
-                toast('Ürün güncellendi!');
-            } catch (error) {
-                console.error("Güncelleme hatası:", error);
-                toast('Güncelleme hatası!', false);
-            }
-        };
-        
-        window.urunSil = async function(id) {
-            if (confirm('Bu ürünü silmek istediğinize emin misiniz?')) {
-                try {
-                    await db.collection("urunler").doc(id).delete();
-                    modalKapa();
-                    toast('Ürün silindi!');
-                } catch (error) {
-                    console.error("Silme hatası:", error);
-                    toast('Silme hatası!', false);
-                }
-            }
-        };
-        
-        // SİPARİŞ İŞLEMLERİ
-        let currentSiparis = { magazaId: null, urunler: [], not: '' };
-        let seciliUrun = null, seciliRenk = null, seciliAdet = 1;
-        
-        window.siparisEkle = function(magazaId) {
-            const magaza = magazalar.find(m => m.id === magazaId);
-            currentSiparis = { magazaId, urunler: [], not: '' };
-            siparisFormGuncelle(magaza);
-        };
-        
-        function siparisFormGuncelle(magaza) {
-            let urunListHtml = '';
-            urunler.forEach(u => {
-                urunListHtml += `
-                    <div class="product-item" onclick="urunSec('${u.id}')" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; hover:background:#f0f2f5;">
-                        <div style="display:flex; justify-content:space-between;">
-                            <b>${u.ad}</b>
-                            <span style="color:#27ae60;">${u.fiyat} TL</span>
-                        </div>
-                        <small style="color:#7f8c8d;">${u.renkler.join(', ')}</small>
-                    </div>
-                `;
-            });
-            
-            let sepetHtml = '';
-            let toplam = 0;
-            currentSiparis.urunler.forEach((u, i) => {
-                toplam += u.adet * u.fiyat;
-                sepetHtml += `
-                    <div style="background:#f0f2f5; padding:10px; margin-bottom:5px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <b>${u.urun}</b> - ${u.renk}<br>
-                            ${u.adet} x ${u.fiyat} TL = ${u.adet * u.fiyat} TL
-                        </div>
-                        <button onclick="sepetSil(${i})" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">🗑</button>
-                    </div>
-                `;
-            });
-            
-            let secimHtml = '';
-            if (seciliUrun) {
-                let renkBtn = '';
-                seciliUrun.renkler.forEach(r => {
-                    renkBtn += `<button onclick="renkSec('${r}')" style="margin:5px; padding:10px; border:2px solid ${seciliRenk === r ? '#3498db' : '#ddd'}; background:${seciliRenk === r ? '#3498db' : 'white'}; color:${seciliRenk === r ? 'white' : '#2c3e50'}; border-radius:10px; cursor:pointer;">${r}</button>`;
-                });
-                
-                secimHtml = `
-                    <div style="border:2px solid #3498db; padding:15px; border-radius:10px; margin:15px 0; background:#f8f9fa;">
-                        <h3 style="margin-bottom:10px;">${seciliUrun.ad}</h3>
-                        <div style="margin-bottom:10px;">${renkBtn}</div>
-                        <div style="display:flex; gap:10px; align-items:center; margin:10px 0;">
-                            <button onclick="adetDegistir(-1)" style="width:40px; height:40px; background:#3498db; color:white; border:none; border-radius:10px; font-size:20px; cursor:pointer;">-</button>
-                            <input type="number" id="seciliAdet" value="${seciliAdet}" min="1" style="width:80px; text-align:center; padding:10px; border:2px solid #3498db; border-radius:10px; font-size:16px;">
-                            <button onclick="adetDegistir(1)" style="width:40px; height:40px; background:#3498db; color:white; border:none; border-radius:10px; font-size:20px; cursor:pointer;">+</button>
-                        </div>
-                        <button class="btn btn-success" onclick="sepeteEkle()" ${!seciliRenk ? 'disabled style="opacity:0.5;"' : ''}>
-                            ➕ Sepete Ekle (${seciliAdet * seciliUrun.fiyat} TL)
-                        </button>
-                    </div>
-                `;
-            }
-            
-            modalAc(`
-                <div class="modal-header">
-                    <h2>📝 Yeni Sipariş - ${magaza.ad}</h2>
-                    <button class="close-modal" onclick="modalKapa()">×</button>
-                </div>
-                
-                <input type="text" id="urunArama" placeholder="🔍 Ürün ara..." class="form-group" onkeyup="urunAra()">
-                <div style="max-height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:10px; margin-bottom:15px;" id="urunListesiModal">
-                    ${urunListHtml}
-                </div>
-                
-                ${secimHtml}
-                
-                <h3 style="margin-bottom:10px;">🛒 Sepet</h3>
-                ${sepetHtml || '<p style="text-align:center; color:#999;">Sepet boş</p>'}
-                
-                <div style="background:#2c3e50; color:white; padding:15px; border-radius:10px; font-size:24px; text-align:right; margin:15px 0;">
-                    TOPLAM: ${toplam} TL
-                </div>
-                
-                <div class="form-group">
-                    <textarea id="siparisNot" rows="2" placeholder="📝 Sipariş notu (varsa)..." style="width:100%; padding:12px; border:2px solid #ddd; border-radius:10px;">${currentSiparis.not}</textarea>
-                </div>
-                
-                <div class="grid-2">
-                    <button class="btn btn-success" onclick="siparisKaydet()">✅ Siparişi Tamamla</button>
-                    <button class="btn btn-danger" onclick="modalKapa()">❌ İptal</button>
-                </div>
-            `);
-        }
-        
-        window.urunSec = function(id) {
-            seciliUrun = urunler.find(u => u.id === id);
-            seciliRenk = seciliUrun.renkler[0];
-            seciliAdet = 1;
-            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
-            siparisFormGuncelle(magaza);
-        };
-        
-        window.renkSec = function(renk) {
-            seciliRenk = renk;
-            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
-            siparisFormGuncelle(magaza);
-        };
-        
-        window.adetDegistir = function(miktar) {
-            seciliAdet = Math.max(1, seciliAdet + miktar);
-            const input = document.getElementById('seciliAdet');
-            if (input) input.value = seciliAdet;
-            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
-            siparisFormGuncelle(magaza);
-        };
-        
-        window.sepeteEkle = function() {
-            if (!seciliUrun || !seciliRenk) return;
-            
-            const existing = currentSiparis.urunler.findIndex(u => u.urunId === seciliUrun.id && u.renk === seciliRenk);
-            if (existing > -1) {
-                currentSiparis.urunler[existing].adet += seciliAdet;
-            } else {
-                currentSiparis.urunler.push({
-                    urunId: seciliUrun.id,
-                    urun: seciliUrun.ad,
-                    renk: seciliRenk,
-                    adet: seciliAdet,
-                    fiyat: seciliUrun.fiyat
-                });
-            }
-            
-            seciliUrun = null;
-            seciliRenk = null;
-            seciliAdet = 1;
-            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
-            siparisFormGuncelle(magaza);
-        };
-        
-        window.urunAra = function() {
-            const arama = document.getElementById('urunArama')?.value.toLowerCase() || '';
-            const filtreli = urunler.filter(u => u.ad.toLowerCase().includes(arama));
-            let html = '';
-            filtreli.forEach(u => {
-                html += `<div onclick="urunSec('${u.id}')" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;"><b>${u.ad}</b> - ${u.fiyat} TL</div>`;
-            });
-            document.getElementById('urunListesiModal').innerHTML = html || '<p style="padding:10px; text-align:center;">Ürün bulunamadı</p>';
-        };
-        
-        window.sepetSil = function(index) {
-            currentSiparis.urunler.splice(index, 1);
-            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
-            siparisFormGuncelle(magaza);
-        };
-        
-        window.siparisKaydet = async function() {
-            if (currentSiparis.urunler.length === 0) {
-                alert('Sepete en az bir ürün ekleyin!');
-                return;
-            }
-            
-            const magaza = magazalar.find(m => m.id === currentSiparis.magazaId);
-            const not = document.getElementById('siparisNot')?.value || '';
-            
-            try {
-                await db.collection("siparisler").add({
-                    magazaId: currentSiparis.magazaId,
-                    magazaAd: magaza.ad,
-                    tarih: new Date().toLocaleDateString('tr-TR'),
-                    saat: new Date().toLocaleTimeString('tr-TR'),
-                    urunler: currentSiparis.urunler,
-                    toplam: currentSiparis.urunler.reduce((t, u) => t + (u.adet * u.fiyat), 0),
-                    durum: 'hazırlanıyor',
-                    not: not,
-                    durumGecmisi: [`${new Date().toLocaleDateString('tr-TR')} - Sipariş oluşturuldu`]
-                });
-                modalKapa();
-                toast('Sipariş başarıyla kaydedildi!');
-            } catch (error) {
-                console.error("Sipariş hatası:", error);
-                toast('Sipariş kaydedilemedi!', false);
-            }
-        };
-        
-        function siparisleriGoster() {
-            const filter = document.getElementById('siparisFilter').value;
-            let filtrelenmis = filter === 'tumu' ? siparisler : siparisler.filter(s => s.durum === filter);
-            
-            const liste = document.getElementById('siparisListesi');
-            if (filtrelenmis.length === 0) {
-                liste.innerHTML = '<p style="text-align:center; color:#999;">Sipariş bulunmuyor</p>';
-                return;
-            }
-            
-            let html = '';
-            filtrelenmis.forEach(s => {
-                html += `
-                    <div class="card" onclick="siparisDetay('${s.id}')">
-                        <div class="card-header">
-                            <h3>${s.magazaAd}</h3>
-                            <span class="badge badge-${s.durum}">${s.durum}</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                            <span>📅 ${s.tarih}</span>
-                            <span style="font-weight:bold; color:#27ae60;">💰 ${s.toplam} TL</span>
-                        </div>
-                        <p style="color:#7f8c8d;">📦 ${s.urunler.map(u => `${u.adet} ${u.urun}`).join(', ')}</p>
-                    </div>
-                `;
-            });
-            liste.innerHTML = html;
-        }
-        
-        window.siparisDetay = function(id) {
-            const s = siparisler.find(s => s.id === id);
-            if (!s) return;
-            
-            modalAc(`
-                <div class="modal-header">
-                    <h2>📋 Sipariş Detayı</h2>
-                    <button class="close-modal" onclick="modalKapa()">×</button>
-                </div>
-                <div style="background:#e8f4fd; padding:15px; border-radius:10px; margin-bottom:15px;">
-                    <p><strong>🏪 Mağaza:</strong> ${s.magazaAd}</p>
-                    <p><strong>📅 Tarih:</strong> ${s.tarih} ${s.saat || ''}</p>
-                    <p><strong>📍 Durum:</strong> <span class="badge badge-${s.durum}">${s.durum}</span></p>
-                </div>
-                
-                <h3 style="margin-bottom:10px;">📦 Ürünler</h3>
-                ${s.urunler.map(u => `
-                    <div style="background:#f0f2f5; padding:10px; border-radius:10px; margin-bottom:5px; display:flex; justify-content:space-between;">
-                        <div>
-                            <b>${u.urun}</b> - ${u.renk}<br>
-                            ${u.adet} adet
-                        </div>
-                        <div style="font-weight:bold; color:#27ae60;">
-                            ${u.adet * u.fiyat} TL
-                        </div>
-                    </div>
-                `).join('')}
-                
-                <div style="background:#2c3e50; color:white; padding:15px; border-radius:10px; font-size:24px; text-align:right; margin:15px 0;">
-                    TOPLAM: ${s.toplam} TL
-                </div>
-                
-                ${s.not ? `
-                    <div style="background:#fff3cd; padding:10px; border-radius:10px; margin-bottom:15px;">
-                        <b>📝 Not:</b> ${s.not}
-                    </div>
-                ` : ''}
-                
-                <h3 style="margin-bottom:10px;">⏱️ Durum Geçmişi</h3>
-                <div style="background:#f8f9fa; padding:10px; border-radius:10px; margin-bottom:15px;">
-                    ${s.durumGecmisi.map(g => `<p style="margin:5px 0;">• ${g}</p>`).join('')}
-                </div>
-                
-                <div style="display:flex; gap:10px; margin-top:20px;">
-                    <button class="btn btn-success" style="flex:1;" onclick="siparisDurumGuncelle('${s.id}', 'üretimde')">🏭 Üretim</button>
-                    <button class="btn btn-success" style="flex:1;" onclick="siparisDurumGuncelle('${s.id}', 'teslim')">✅ Teslim</button>
-                    <button class="btn btn-danger" style="flex:1;" onclick="siparisDurumGuncelle('${s.id}', 'iptal')">❌ İptal</button>
-                </div>
-            `);
-        };
-        
-        window.siparisDurumGuncelle = async function(id, yeniDurum) {
-            const s = siparisler.find(s => s.id === id);
-            if (s) {
-                s.durumGecmisi.push(`${new Date().toLocaleDateString('tr-TR')} - ${yeniDurum}`);
-                try {
-                    await db.collection("siparisler").doc(id).update({
-                        durum: yeniDurum,
-                        durumGecmisi: s.durumGecmisi
-                    });
-                    modalKapa();
-                    toast('Sipariş durumu güncellendi!');
-                } catch (error) {
-                    console.error("Güncelleme hatası:", error);
-                    toast('Güncelleme hatası!', false);
-                }
-            }
-        };
-        
-        function raporlariGoster() {
-            const aktif = siparisler.filter(s => s.durum !== 'iptal');
-            const toplamSiparis = aktif.length;
-            const toplamCiro = aktif.reduce((t, s) => t + (s.toplam || 0), 0);
-            
-            // Mağaza bazlı satışlar
-            const magazaSatis = {};
-            aktif.forEach(s => {
-                if (!magazaSatis[s.magazaAd]) {
-                    magazaSatis[s.magazaAd] = { adet: 0, ciro: 0 };
-                }
-                magazaSatis[s.magazaAd].adet++;
-                magazaSatis[s.magazaAd].ciro += s.toplam;
-            });
-            
-            // Ürün bazlı satışlar
-            const urunSatis = {};
-            aktif.forEach(s => {
-                s.urunler.forEach(u => {
-                    if (!urunSatis[u.urun]) {
-                        urunSatis[u.urun] = { adet: 0, ciro: 0 };
-                    }
-                    urunSatis[u.urun].adet += u.adet;
-                    urunSatis[u.urun].ciro += u.adet * u.fiyat;
-                });
-            });
-            
-            // En çok satan mağazaları sırala
-            const enIyiMagazalar = Object.entries(magazaSatis)
-                .sort((a, b) => b[1].ciro - a[1].ciro)
-                .slice(0, 3);
-            
-            // En çok satan ürünleri sırala
-            const enIyiUrunler = Object.entries(urunSatis)
-                .sort((a, b) => b[1].ciro - a[1].ciro)
-                .slice(0, 3);
-            
-            document.getElementById('raporlarIcerik').innerHTML = `
-                <div class="stats-container" style="margin-bottom:20px;">
-                    <div class="stat-card">
-                        <div class="number">${toplamSiparis}</div>
-                        <div class="label">Toplam Sipariş</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number">${toplamCiro} TL</div>
-                        <div class="label">Toplam Ciro</div>
-                    </div>
-                </div>
-                
-                <div style="background:#f8f9fa; padding:15px; border-radius:15px; margin-bottom:15px;">
-                    <h3 style="margin-bottom:10px;">🏆 En Çok Satan Mağazalar</h3>
-                    ${enIyiMagazalar.map(([ad, veri], index) => `
-                        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;">
-                            <span>${index+1}. ${ad}</span>
-                            <span style="font-weight:bold;">${veri.ciro} TL (${veri.adet} sipariş)</span>
-                        </div>
-                    `).join('')}
-                </div>
-                
-                <div style="background:#f8f9fa; padding:15px; border-radius:15px;">
-                    <h3 style="margin-bottom:10px;">📦 En Çok Satan Ürünler</h3>
-                    ${enIyiUrunler.map(([ad, veri], index) => `
-                        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;">
-                            <span>${index+1}. ${ad}</span>
-                            <span style="font-weight:bold;">${veri.ciro} TL (${veri.adet} adet)</span>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-    </script>
-</body>
-</html>
+        if urun_ids:
+            kasa.fatura_olustur(musteri, urun_ids)
+        else:
+            print("❌ Sepete ürün eklenmedi.")
+
+    elif secim == "6":
+        kasa.faturalari_listele()
+
+    elif secim == "7":
+        kasa.faturalari_listele()
+        no = int(input("Güncellemek istediğin fatura no: "))
+        durum = input("Yeni durum (Faturalandı/İptal): ")
+        kasa.fatura_durum_guncelle(no, durum)
+
+    elif secim == "8":
+        print(f"\n💰 KASA BAKİYESİ: {kasa.bakiye} TL")
+        print(f"📦 Toplam Ürün: {len(kasa.urunler)}")
+        print(f"📄 Toplam Fatura: {len(kasa.faturalar)}")
+
+    elif secim == "9":
+        print("Çıkılıyor... Veriler kaydedildi.")
+        break
+
+    else:
+        print("Geçersiz seçim!")
