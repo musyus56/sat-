@@ -1,8 +1,3 @@
-Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (Code128, EAN-13, UPC-A, Code39, vs.) okuyabiliyor.
-
-İşte barkod okuma özelliği eklenmiş güncel versiyon:
-
-```html
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -138,6 +133,28 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
         .btn-scan:hover {
             background: #7c3aed;
         }
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-sm-primary {
+            background: #2a7de1;
+            color: white;
+        }
+        .btn-sm-primary:hover {
+            background: #1a5bb5;
+        }
+        .btn-sm-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-sm-danger:hover {
+            background: #b02a37;
+        }
         
         .flex-row {
             display: flex;
@@ -200,6 +217,15 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
             background: #fef3c7;
             color: #92400e;
             border: 1px solid #fde68a;
+        }
+        .badge-urun {
+            background: #ede9fe;
+            color: #5b21b6;
+            border: 1px solid #c4b5fd;
+            cursor: pointer;
+        }
+        .badge-urun:hover {
+            background: #ddd6fe;
         }
         .seri-list {
             max-width: 200px;
@@ -351,6 +377,125 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
         }
         .seri-item .seri-actions .remove-btn:hover {
             background: #fee2e2;
+        }
+        
+        /* MENÜ - HAZIR ÜRÜNLER */
+        .urun-menu {
+            background: white;
+            border: 2px solid #dbeafe;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+        }
+        .urun-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .urun-menu-header h4 {
+            margin: 0;
+            color: #1e2a47;
+            font-size: 0.95rem;
+        }
+        .urun-menu-header .urun-count {
+            font-size: 0.75rem;
+            color: #6c7a92;
+        }
+        .urun-listesi {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .urun-item {
+            background: #f3f4f6;
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 2px solid transparent;
+            color: #1e2a47;
+        }
+        .urun-item:hover {
+            background: #dbeafe;
+            border-color: #93c5fd;
+        }
+        .urun-item.active {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+        .urun-item .urun-ekle-btn {
+            background: none;
+            border: none;
+            color: #3b82f6;
+            cursor: pointer;
+            font-size: 0.7rem;
+            margin-left: 4px;
+        }
+        .urun-item .urun-ekle-btn:hover {
+            color: #1d4ed8;
+        }
+        
+        /* ÜRÜN EKLEME MODAL */
+        .urun-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+        }
+        .urun-modal.active {
+            display: flex;
+        }
+        .urun-modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            max-width: 450px;
+            width: 95%;
+        }
+        .urun-modal-content h3 {
+            margin-top: 0;
+            color: #1e2a47;
+        }
+        .urun-modal-content .form-group {
+            margin-bottom: 12px;
+        }
+        .urun-modal-content .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .urun-modal-content .btn-group button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .urun-modal-content .btn-group .btn-save-urun {
+            background: #28a745;
+            color: white;
+        }
+        .urun-modal-content .btn-group .btn-save-urun:hover {
+            background: #1e7e34;
+        }
+        .urun-modal-content .btn-group .btn-cancel-urun {
+            background: #dc3545;
+            color: white;
+        }
+        .urun-modal-content .btn-group .btn-cancel-urun:hover {
+            background: #b02a37;
         }
         
         /* SCAN MODAL */
@@ -573,6 +718,53 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
             margin-top: 4px;
         }
         
+        /* OTOMATİK TAMAMLAMA */
+        .autocomplete-list {
+            position: absolute;
+            background: white;
+            border: 2px solid #dbeafe;
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            width: 100%;
+            display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .autocomplete-list.active {
+            display: block;
+        }
+        .autocomplete-list .autocomplete-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: 0.15s;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .autocomplete-list .autocomplete-item:hover {
+            background: #f0f4ff;
+        }
+        .autocomplete-list .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-list .autocomplete-item .item-name {
+            font-weight: 500;
+        }
+        .autocomplete-list .autocomplete-item .item-category {
+            font-size: 0.7rem;
+            color: #6c7a92;
+            background: #f3f4f6;
+            padding: 2px 10px;
+            border-radius: 30px;
+        }
+        .urun-input-wrapper {
+            position: relative;
+            flex: 2;
+            min-width: 200px;
+        }
+        
         @media (max-width: 700px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -590,6 +782,9 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
                 font-size: 0.7rem;
                 padding: 6px 8px;
                 min-width: 55px;
+            }
+            .urun-modal-content {
+                padding: 15px;
             }
         }
     </style>
@@ -638,13 +833,27 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
             </div>
             
             <div class="seri-input-group">
-                <input type="text" id="seriInput" placeholder="Seri numarasını girin veya barkod/QR okutun..." />
-                <button class="btn btn-scan" id="scanBtn">📷 Barkod / QR Oku</button>
+                <div class="urun-input-wrapper">
+                    <input type="text" id="seriInput" placeholder="Seri numarasını girin veya barkod/QR okutun..." autocomplete="off" />
+                    <div class="autocomplete-list" id="autocompleteList"></div>
+                </div>
+                <button class="btn btn-scan" id="scanBtn">📷 Barkod / QR</button>
                 <button class="btn btn-success" id="seriEkleBtn">➕ Ekle</button>
                 <button class="btn btn-danger" id="seriTemizleBtn">🗑️ Tümünü Temizle</button>
             </div>
-            <div class="barcode-hint">
-                💡 Desteklenen barkodlar: Code128, EAN-13, UPC-A, Code39, QR, DataMatrix, PDF417 ve daha fazlası
+            
+            <!-- HAZIR ÜRÜN MENÜSÜ -->
+            <div class="urun-menu">
+                <div class="urun-menu-header">
+                    <h4>📋 Hazır Ürünler</h4>
+                    <div>
+                        <span class="urun-count" id="urunCount">0 ürün</span>
+                        <button class="btn-sm btn-sm-primary" id="urunEkleBtn" style="margin-left:8px;">➕ Yeni Ürün</button>
+                    </div>
+                </div>
+                <div class="urun-listesi" id="urunListesi">
+                    <span style="color:#9ca3af; font-size:0.85rem;">Henüz ürün eklenmemiş</span>
+                </div>
             </div>
             
             <div class="seri-list-container" id="seriListContainer">
@@ -700,6 +909,25 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
     </div>
 </div>
 
+<!-- ÜRÜN EKLEME MODALI -->
+<div class="urun-modal" id="urunModal">
+    <div class="urun-modal-content">
+        <h3>➕ Yeni Ürün Ekle</h3>
+        <div class="form-group">
+            <label>Ürün Adı *</label>
+            <input type="text" id="yeniUrunAdi" placeholder="iPhone 15 Pro" />
+        </div>
+        <div class="form-group">
+            <label>Kategori (isteğe bağlı)</label>
+            <input type="text" id="yeniUrunKategori" placeholder="Telefon" />
+        </div>
+        <div class="btn-group">
+            <button class="btn-save-urun" id="urunKaydetBtn">💾 Kaydet</button>
+            <button class="btn-cancel-urun" id="urunIptalBtn">❌ İptal</button>
+        </div>
+    </div>
+</div>
+
 <!-- SCAN MODAL -->
 <div class="scan-modal" id="scanModal">
     <div class="scan-modal-content">
@@ -708,14 +936,12 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
             <button class="close-btn" id="scanCloseBtn">&times;</button>
         </div>
         
-        <!-- Yöntem Seçimi -->
         <div class="scan-methods">
             <button id="methodAuto" class="active">🔄 Otomatik</button>
             <button id="methodQR">📱 QR</button>
             <button id="methodBarcode">📊 Barkod</button>
         </div>
         
-        <!-- Scanner Alanı -->
         <div id="scanner-container"></div>
         
         <div class="scan-status" id="scanStatus">📱 Barkod veya QR kodu kameraya gösterin...</div>
@@ -760,6 +986,7 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
     let html5Scanner = null;
     let isScanning = false;
     let currentMethod = 'auto';
+    let urunler = []; // Hazır ürün listesi
 
     // DOM
     const musteriAdi = document.getElementById('musteriAdi');
@@ -784,6 +1011,17 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
     const kayitSayisi = document.getElementById('kayitSayisi');
     const syncStatus = document.getElementById('syncStatus');
     
+    // Ürün Menüsü
+    const urunListesi = document.getElementById('urunListesi');
+    const urunCount = document.getElementById('urunCount');
+    const urunEkleBtn = document.getElementById('urunEkleBtn');
+    const urunModal = document.getElementById('urunModal');
+    const yeniUrunAdi = document.getElementById('yeniUrunAdi');
+    const yeniUrunKategori = document.getElementById('yeniUrunKategori');
+    const urunKaydetBtn = document.getElementById('urunKaydetBtn');
+    const urunIptalBtn = document.getElementById('urunIptalBtn');
+    const autocompleteList = document.getElementById('autocompleteList');
+    
     // Scan Elementleri
     const scanModal = document.getElementById('scanModal');
     const scanCloseBtn = document.getElementById('scanCloseBtn');
@@ -801,6 +1039,38 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
 
     let geciciSeriListesi = [];
     let lastScanResult = '';
+
+    // ============================================
+    // HAZIR ÜRÜN LİSTESİ
+    // ============================================
+    const defaultUrunler = [
+        { ad: 'iPhone 15 Pro', kategori: 'Telefon' },
+        { ad: 'iPhone 15 Pro Max', kategori: 'Telefon' },
+        { ad: 'iPhone 15', kategori: 'Telefon' },
+        { ad: 'iPhone 14 Pro', kategori: 'Telefon' },
+        { ad: 'iPhone 14', kategori: 'Telefon' },
+        { ad: 'Samsung Galaxy S24 Ultra', kategori: 'Telefon' },
+        { ad: 'Samsung Galaxy S24', kategori: 'Telefon' },
+        { ad: 'Samsung Galaxy A55', kategori: 'Telefon' },
+        { ad: 'Samsung Galaxy A35', kategori: 'Telefon' },
+        { ad: 'Xiaomi 14 Pro', kategori: 'Telefon' },
+        { ad: 'Xiaomi Redmi Note 13', kategori: 'Telefon' },
+        { ad: 'MacBook Pro 14"', kategori: 'Bilgisayar' },
+        { ad: 'MacBook Pro 16"', kategori: 'Bilgisayar' },
+        { ad: 'MacBook Air M3', kategori: 'Bilgisayar' },
+        { ad: 'iPad Pro 12.9"', kategori: 'Tablet' },
+        { ad: 'iPad Air', kategori: 'Tablet' },
+        { ad: 'Apple Watch Ultra 2', kategori: 'Saat' },
+        { ad: 'Apple Watch Series 9', kategori: 'Saat' },
+        { ad: 'AirPods Pro 2', kategori: 'Kulaklık' },
+        { ad: 'AirPods Max', kategori: 'Kulaklık' },
+        { ad: 'PlayStation 5', kategori: 'Oyun' },
+        { ad: 'Xbox Series X', kategori: 'Oyun' },
+        { ad: 'Nintendo Switch', kategori: 'Oyun' },
+        { ad: 'Lenovo ThinkPad X1', kategori: 'Bilgisayar' },
+        { ad: 'Dell XPS 13', kategori: 'Bilgisayar' },
+        { ad: 'HP Spectre x360', kategori: 'Bilgisayar' },
+    ];
 
     // ============================================
     // YARDIMCI FONKSİYONLAR
@@ -832,6 +1102,119 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
     }
 
     // ============================================
+    // ÜRÜN YÖNETİMİ
+    // ============================================
+    function urunleriGoster() {
+        urunListesi.innerHTML = '';
+        
+        if (urunler.length === 0) {
+            urunListesi.innerHTML = '<span style="color:#9ca3af; font-size:0.85rem;">Henüz ürün eklenmemiş</span>';
+            urunCount.textContent = '0 ürün';
+            return;
+        }
+        
+        urunler.forEach((urun, index) => {
+            const span = document.createElement('span');
+            span.className = 'urun-item';
+            span.innerHTML = `
+                ${urun.ad}
+                ${urun.kategori ? `<span style="font-size:0.6rem;color:#6c7a92;">(${urun.kategori})</span>` : ''}
+                <button class="urun-ekle-btn" data-index="${index}" title="Seri input'una ekle">📋</button>
+                <button class="urun-ekle-btn" data-index="${index}" style="color:#dc3545;" title="Sil">×</button>
+            `;
+            
+            // Ekle butonu
+            span.querySelector('.urun-ekle-btn:first-child').addEventListener('click', function(e) {
+                e.stopPropagation();
+                const idx = parseInt(this.dataset.index);
+                seriInput.value = urunler[idx].ad;
+                seriInput.focus();
+                // Otomatik tamamlama listesini gizle
+                autocompleteList.classList.remove('active');
+            });
+            
+            // Sil butonu
+            span.querySelector('.urun-ekle-btn:last-child').addEventListener('click', function(e) {
+                e.stopPropagation();
+                const idx = parseInt(this.dataset.index);
+                if (confirm(`"${urunler[idx].ad}" ürününü silmek istediğinize emin misiniz?`)) {
+                    urunler.splice(idx, 1);
+                    urunleriGoster();
+                }
+            });
+            
+            // Tıklama ile ekle
+            span.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.index);
+                seriInput.value = urunler[idx].ad;
+                seriInput.focus();
+                autocompleteList.classList.remove('active');
+            });
+            
+            urunListesi.appendChild(span);
+        });
+        
+        urunCount.textContent = `${urunler.length} ürün`;
+    }
+
+    function urunEkle() {
+        const ad = yeniUrunAdi.value.trim();
+        if (!ad) {
+            alert('Lütfen ürün adını girin.');
+            return;
+        }
+        
+        urunler.push({
+            ad: ad,
+            kategori: yeniUrunKategori.value.trim()
+        });
+        
+        yeniUrunAdi.value = '';
+        yeniUrunKategori.value = '';
+        urunModal.classList.remove('active');
+        urunleriGoster();
+    }
+
+    // ============================================
+    // OTOMATİK TAMAMLAMA
+    // ============================================
+    function autoCompleteSearch(query) {
+        if (!query || query.length < 1) {
+            autocompleteList.classList.remove('active');
+            return;
+        }
+        
+        const queryLower = query.toLowerCase();
+        const results = urunler.filter(u => 
+            u.ad.toLowerCase().includes(queryLower) ||
+            (u.kategori && u.kategori.toLowerCase().includes(queryLower))
+        );
+        
+        if (results.length === 0) {
+            autocompleteList.classList.remove('active');
+            return;
+        }
+        
+        autocompleteList.innerHTML = '';
+        results.forEach(urun => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            div.innerHTML = `
+                <span class="item-name">${urun.ad}</span>
+                ${urun.kategori ? `<span class="item-category">${urun.kategori}</span>` : ''}
+            `;
+            div.addEventListener('click', function() {
+                seriInput.value = urun.ad;
+                autocompleteList.classList.remove('active');
+                seriInput.focus();
+            });
+            autocompleteList.appendChild(div);
+        });
+        
+        autocompleteList.classList.add('active');
+    }
+
+    // ============================================
     // BARKOD / QR SCANNER FONKSİYONLARI
     // ============================================
     function getScannerConfig() {
@@ -841,16 +1224,13 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
             aspectRatio: 1.0
         };
 
-        // Farklı formatlar için özel ayarlar
         if (currentMethod === 'barcode') {
-            // Barkod için daha geniş alan
             config.qrbox = { width: 320, height: 120 };
             config.aspectRatio = 4/3;
         } else if (currentMethod === 'qr') {
             config.qrbox = { width: 250, height: 250 };
             config.aspectRatio = 1.0;
         }
-        // 'auto' için standart ayarlar
 
         return config;
     }
@@ -866,23 +1246,6 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
             html5Scanner = new Html5Qrcode("scanner-container");
             
             const config = getScannerConfig();
-            
-            // Desteklenen formatlar
-            const formats = [
-                Html5QrcodeSupportedFormats.QR_CODE,
-                Html5QrcodeSupportedFormats.DATA_MATRIX,
-                Html5QrcodeSupportedFormats.PDF_417,
-                Html5QrcodeSupportedFormats.AZTEC,
-                Html5QrcodeSupportedFormats.CODE_128,
-                Html5QrcodeSupportedFormats.CODE_39,
-                Html5QrcodeSupportedFormats.CODE_93,
-                Html5QrcodeSupportedFormats.EAN_13,
-                Html5QrcodeSupportedFormats.EAN_8,
-                Html5QrcodeSupportedFormats.UPC_A,
-                Html5QrcodeSupportedFormats.UPC_E,
-                Html5QrcodeSupportedFormats.ITF,
-                Html5QrcodeSupportedFormats.CODABAR
-            ];
             
             isScanning = true;
             
@@ -906,11 +1269,8 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
         }
     }
 
-    function onScanSuccess(decodedText, decodedResult) {
-        // Tüm formatları kabul et
-        const format = decodedResult?.result?.format?.formatName || 'Bilinmeyen';
-        
-        scanStatus.textContent = `✅ Okundu! (${format})`;
+    function onScanSuccess(decodedText) {
+        scanStatus.textContent = `✅ Okundu!`;
         scanStatus.className = 'scan-status success';
         
         lastScanResult = decodedText;
@@ -918,16 +1278,12 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
         scanResultEdit.value = decodedText;
         scanResult.classList.add('active');
         
-        // 1.5 saniye sonra otomatik kullan
         setTimeout(() => {
             useScanResult();
         }, 1500);
     }
 
-    function onScanError(errorMessage) {
-        // Hata mesajlarını gösterme (çok fazla log olmaması için)
-        // console.warn('Scan error:', errorMessage);
-    }
+    function onScanError(errorMessage) {}
 
     function stopScanner() {
         if (html5Scanner && isScanning) {
@@ -961,7 +1317,6 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
         scanStatus.className = 'scan-status';
         lastScanResult = '';
         
-        // Aktif methodu göster
         methodAuto.classList.toggle('active', currentMethod === 'auto');
         methodQR.classList.toggle('active', currentMethod === 'qr');
         methodBarcode.classList.toggle('active', currentMethod === 'barcode');
@@ -996,7 +1351,6 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
         methodQR.classList.toggle('active', method === 'qr');
         methodBarcode.classList.toggle('active', method === 'barcode');
         
-        // Scanner'ı yeniden başlat
         stopScanner();
         setTimeout(() => {
             startScanner();
@@ -1057,6 +1411,7 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
         seriInput.value = '';
         seriListesiniGuncelle();
         seriInput.focus();
+        autocompleteList.classList.remove('active');
     }
 
     function seriTemizle() {
@@ -1085,6 +1440,7 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
         vazgecBtn.style.display = 'none';
         editIndexSpan.style.display = 'none';
         kaydetBtn.textContent = '💾 Kaydet';
+        autocompleteList.classList.remove('active');
     }
 
     // ============================================
@@ -1323,11 +1679,33 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
     // ============================================
     seriEkleBtn.addEventListener('click', seriEkle);
     seriTemizleBtn.addEventListener('click', seriTemizle);
-    seriInput.addEventListener('keypress', function(e) {
+    
+    // Seri input için otomatik tamamlama
+    seriInput.addEventListener('input', function(e) {
+        autoCompleteSearch(this.value);
+    });
+    
+    seriInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
+            if (autocompleteList.classList.contains('active')) {
+                const firstItem = autocompleteList.querySelector('.autocomplete-item');
+                if (firstItem) {
+                    firstItem.click();
+                    return;
+                }
+            }
             seriEkle();
         }
+        if (e.key === 'Escape') {
+            autocompleteList.classList.remove('active');
+        }
+    });
+    
+    seriInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            autocompleteList.classList.remove('active');
+        }, 200);
     });
 
     kaydetBtn.addEventListener('click', function() {
@@ -1354,6 +1732,33 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
         verileriYukle();
     });
 
+    // Ürün Menüsü Olayları
+    urunEkleBtn.addEventListener('click', function() {
+        urunModal.classList.add('active');
+        yeniUrunAdi.focus();
+    });
+    
+    urunKaydetBtn.addEventListener('click', urunEkle);
+    urunIptalBtn.addEventListener('click', function() {
+        urunModal.classList.remove('active');
+        yeniUrunAdi.value = '';
+        yeniUrunKategori.value = '';
+    });
+    
+    urunModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            urunModal.classList.remove('active');
+            yeniUrunAdi.value = '';
+            yeniUrunKategori.value = '';
+        }
+    });
+    
+    yeniUrunAdi.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            urunEkle();
+        }
+    });
+
     // Scan Butonları
     scanBtn.addEventListener('click', openScanModal);
     scanCloseBtn.addEventListener('click', closeScanModal);
@@ -1365,14 +1770,12 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
         lastScanResult = '';
     });
     
-    // Modal kapatma (dışarı tıklama)
     scanModal.addEventListener('click', function(e) {
         if (e.target === this) {
             closeScanModal();
         }
     });
 
-    // Yöntem Değiştirme
     methodAuto.addEventListener('click', function() { changeMethod('auto'); });
     methodQR.addEventListener('click', function() { changeMethod('qr'); });
     methodBarcode.addEventListener('click', function() { changeMethod('barcode'); });
@@ -1380,6 +1783,10 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
     // ============================================
     // BAŞLANGIÇ
     // ============================================
+    // Varsayılan ürünleri yükle
+    urunler = [...defaultUrunler];
+    urunleriGoster();
+    
     setDefaultDate();
     formuTemizle();
     verileriYukle();
@@ -1387,41 +1794,7 @@ Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (
     console.log('✅ Firebase Sipariş Takip Sistemi Başlatıldı!');
     console.log('📊 Veritabanı: mkrurun');
     console.log('📊 Barkod/QR okuyucu aktif!');
-    console.log('📊 Desteklenen formatlar: QR, Code128, EAN-13, UPC-A, Code39, DataMatrix, PDF417');
+    console.log(`📦 ${urunler.length} adet hazır ürün yüklendi!`);
 </script>
 </body>
 </html>
-```
-
-🎯 Bu Versiyonda Desteklenen Barkodlar:
-
-Format Açıklama
-QR Kod Kare matris kod
-Code128 En yaygın barkod
-EAN-13 Ürün barkodu (13 haneli)
-UPC-A ABD ürün barkodu (12 haneli)
-Code39 Endüstriyel barkod
-DataMatrix 2D matris kod
-PDF417 2D barkod
-Aztec 2D barkod
-Code93 Code39'un gelişmişi
-EAN-8 Kısa ürün barkodu
-ITF Interleaved 2 of 5
-Codabar Barkod formatı
-
-📱 Kullanım:
-
-1. "Barkod / QR Oku" butonuna tıklayın
-2. Otomatik veya QR / Barkod seçeneğini seçin
-3. Barkodu kameraya gösterin
-4. Otomatik olarak okunur ve seri listesine eklenir
-5. Manuel düzeltme imkanı da var
-
-⚡ Avantajlar:
-
-· QR + Barkod tek bir yerde
-· Otomatik format algılama
-· Manuel düzeltme imkanı
-· Hızlı ve güvenilir
-
-Artık hem barkod hem QR kod okuyabilirsiniz! 📊
