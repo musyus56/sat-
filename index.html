@@ -1,249 +1,1351 @@
-import requests
-from bs4 import BeautifulSoup
-import json
-import os
-import re
-from datetime import datetime
+Anladım, OCR (Optik Karakter Tanıma) ile kamera görüntüsünden seri numaralarını otomatik okumak istiyorsunuz. Yani seri numarasının fotoğrafını çekip metne çevirecek.
 
-# === KASA SINIFI ===
-class Kasa:
-    def __init__(self):
-        self.dosya = "kasa_veri.json"
-        self.urunler_dosya = "urunler.json"
-        self.faturalar_dosya = "faturalar.json"
-        self.bakiye = 0
-        self.urunler = []
-        self.faturalar = []
-        self.yukle()
+📸 OCR ile Seri Numarası Okuma
 
-    def yukle(self):
-        # Kasa verileri
-        if os.path.exists(self.dosya):
-            with open(self.dosya, "r", encoding="utf-8") as f:
-                veri = json.load(f)
-                self.bakiye = veri.get("bakiye", 0)
-        
-        # Ürünler
-        if os.path.exists(self.urunler_dosya):
-            with open(self.urunler_dosya, "r", encoding="utf-8") as f:
-                self.urunler = json.load(f)
-        
-        # Faturalar
-        if os.path.exists(self.faturalar_dosya):
-            with open(self.faturalar_dosya, "r", encoding="utf-8") as f:
-                self.faturalar = json.load(f)
+Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf çekip, içindeki metni (seri numarasını) otomatik olarak okuyacak.
 
-    def kaydet(self):
-        with open(self.dosya, "w", encoding="utf-8") as f:
-            json.dump({"bakiye": self.bakiye}, f, ensure_ascii=False, indent=2)
-        with open(self.urunler_dosya, "w", encoding="utf-8") as f:
-            json.dump(self.urunler, f, ensure_ascii=False, indent=2)
-        with open(self.faturalar_dosya, "w", encoding="utf-8") as f:
-            json.dump(self.faturalar, f, ensure_ascii=False, indent=2)
+İşte OCR özellikli güncellenmiş kod:
 
-    # === ÜRÜN İŞLEMLERİ ===
-    def urun_ekle(self, ad, fiyat, stok=1):
-        urun = {
-            "id": len(self.urunler) + 1,
-            "ad": ad,
-            "fiyat": fiyat,
-            "stok": stok,
-            "eklenme_tarihi": datetime.now().strftime("%Y-%m-%d %H:%M")
-        }
-        self.urunler.append(urun)
-        self.kaydet()
-        return urun
-
-    def urun_listele(self):
-        if not self.urunler:
-            print("📦 Hiç ürün yok.")
-            return
-        print("\n--- ÜRÜN LİSTESİ ---")
-        for u in self.urunler:
-            print(f"ID:{u['id']} | {u['ad']} | {u['fiyat']} TL | Stok:{u['stok']}")
-
-    def urun_fiyat_guncelle(self, urun_id, yeni_fiyat):
-        for u in self.urunler:
-            if u['id'] == urun_id:
-                u['fiyat'] = yeni_fiyat
-                self.kaydet()
-                print(f"✅ Ürün fiyatı güncellendi: {u['ad']} -> {yeni_fiyat} TL")
-                return True
-        print("❌ Ürün bulunamadı.")
-        return False
-
-    # === FATURA İŞLEMLERİ ===
-    def fatura_olustur(self, musteri_bilgileri, urun_ids):
-        sepetteki_urunler = []
-        toplam = 0
-        
-        for id in urun_ids:
-            for u in self.urunler:
-                if u['id'] == id:
-                    sepetteki_urunler.append(u.copy())
-                    toplam += u['fiyat']
-                    break
-        
-        if not sepetteki_urunler:
-            print("❌ Sepet boş!")
-            return
-        
-        fatura = {
-            "fatura_no": len(self.faturalar) + 1,
-            "tarih": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "musteri": musteri_bilgileri,
-            "urunler": sepetteki_urunler,
-            "toplam": toplam,
-            "durum": "Oluşturuldu"  # Sonradan "Faturalandı" olarak değiştirilebilir
-        }
-        
-        self.faturalar.append(fatura)
-        self.bakiye += toplam
-        self.kaydet()
-        
-        print(f"\n✅ FATURA OLUŞTURULDU!")
-        print(f"Fatura No: {fatura['fatura_no']}")
-        print(f"Toplam: {toplam} TL")
-        print(f"Müşteri: {musteri_bilgileri['isim']}")
-        print("Ürünler:")
-        for u in sepetteki_urunler:
-            print(f"  - {u['ad']}: {u['fiyat']} TL")
-        return fatura
-
-    def faturalari_listele(self):
-        if not self.faturalar:
-            print("📄 Hiç fatura yok.")
-            return
-        print("\n--- FATURA LİSTESİ ---")
-        for f in self.faturalar:
-            print(f"No:{f['fatura_no']} | {f['tarih']} | {f['musteri']['isim']} | {f['toplam']} TL | {f['durum']}")
-
-    def fatura_durum_guncelle(self, fatura_no, yeni_durum="Faturalandı"):
-        for f in self.faturalar:
-            if f['fatura_no'] == fatura_no:
-                f['durum'] = yeni_durum
-                self.kaydet()
-                print(f"✅ Fatura {fatura_no} durumu güncellendi: {yeni_durum}")
-                return True
-        print("❌ Fatura bulunamadı.")
-        return False
-
-# === MAKERPAZAR VERİ ÇEKİCİ ===
-def makerpazar_urun_cek(url):
-    try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, "html.parser")
-        
-        # Ürün adı
-        ad_etiketi = soup.find(["h1", "h2", "span"], class_=re.compile("title|name|product-name"))
-        ad = ad_etiketi.text.strip() if ad_etiketi else "Makerpazar Ürünü"
-        
-        # Fiyat
-        fiyat_etiketi = soup.find(["span", "div", "p"], class_=re.compile("price|fiyat|product-price"))
-        if fiyat_etiketi:
-            fiyat_metin = fiyat_etiketi.text.strip()
-            sayi = re.search(r"([\d,\.]+)", fiyat_metin.replace(".", "").replace(",", "."))
-            fiyat = float(sayi.group(1)) if sayi else 0
-        else:
-            fiyat = 0
-        
-        return {"ad": ad, "fiyat": fiyat}
-    except Exception as e:
-        print(f"❌ Veri çekme hatası: {e}")
-        return None
-
-# === ANA PROGRAM ===
-kasa = Kasa()
-
-while True:
-    print("\n" + "="*50)
-    print("🏪 MAKERPAZAR KASA & FATURA SİSTEMİ")
-    print("="*50)
-    print("1. Ürün Ekle (Manuel)")
-    print("2. Makerpazar'dan Ürün Çek ve Ekle")
-    print("3. Ürün Listele")
-    print("4. Ürün Fiyatını Değiştir (Tek seferlik)")
-    print("5. Fatura Oluştur")
-    print("6. Faturaları Listele")
-    print("7. Fatura Durumu Güncelle (Faturalandı/İptal)")
-    print("8. Kasa Raporu")
-    print("9. Çıkış")
-    print("="*50)
+```html
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Müşteri Sipariş Takip Sistemi - Firebase</title>
     
-    secim = input("Seçiminiz: ")
-
-    if secim == "1":
-        ad = input("Ürün adı: ")
-        fiyat = float(input("Fiyat (TL): "))
-        stok = int(input("Stok adedi: ") or "1")
-        kasa.urun_ekle(ad, fiyat, stok)
-        print("✅ Ürün eklendi!")
-
-    elif secim == "2":
-        url = input("Makerpazar ürün URL'si (tam link): ")
-        veri = makerpazar_urun_cek(url)
-        if veri and veri['fiyat'] > 0:
-            print(f"📦 {veri['ad']} - {veri['fiyat']} TL")
-            onay = input("Bu ürünü eklemek istiyor musun? (e/h): ")
-            if onay.lower() == "e":
-                stok = int(input("Stok adedi: ") or "1")
-                kasa.urun_ekle(veri['ad'], veri['fiyat'], stok)
-                print("✅ Ürün eklendi!")
-        else:
-            print("❌ Ürün bulunamadı veya fiyat çekilemedi.")
-
-    elif secim == "3":
-        kasa.urun_listele()
-
-    elif secim == "4":
-        kasa.urun_listele()
-        urun_id = int(input("Güncellemek istediğin ürün ID: "))
-        yeni_fiyat = float(input("Yeni fiyat (TL): "))
-        kasa.urun_fiyat_guncelle(urun_id, yeni_fiyat)
-
-    elif secim == "5":
-        # Müşteri bilgileri
-        print("\n--- MÜŞTERİ BİLGİLERİ ---")
-        musteri = {
-            "isim": input("Müşteri adı: "),
-            "vergi_no": input("Vergi No: "),
-            "adres": input("Adres: "),
-            "telefon": input("Telefon: "),
-            "email": input("E-posta: ")
+    <!-- Firebase SDK'ları -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- Tesseract.js - OCR Kütüphanesi -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+        body {
+            background: #f4f7fc;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            padding: 25px 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1e2a47;
+            border-left: 6px solid #2a7de1;
+            padding-left: 15px;
+            margin-top: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .sync-status {
+            background: #28a745;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .sync-status.offline {
+            background: #dc3545;
         }
         
-        # Ürün seçimi
-        kasa.urun_listele()
-        urun_ids = []
-        while True:
-            id = input("Sepete eklemek için ürün ID (bitirmek için '0'): ")
-            if id == "0":
-                break
-            urun_ids.append(int(id))
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px 25px;
+            background: #f9faff;
+            padding: 20px;
+            border-radius: 16px;
+            margin: 20px 0;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1e2a47;
+            margin-bottom: 4px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 10px 12px;
+            border: 1px solid #d0d9e8;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            transition: 0.2s;
+            background: white;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #2a7de1;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(42,125,225,0.15);
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
         
-        if urun_ids:
-            kasa.fatura_olustur(musteri, urun_ids)
-        else:
-            print("❌ Sepete ürün eklenmedi.")
+        .btn {
+            background: #2a7de1;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            width: fit-content;
+            min-width: 130px;
+        }
+        .btn:hover {
+            background: #1a5bb5;
+            transform: scale(1.02);
+        }
+        .btn-danger {
+            background: #d9534f;
+        }
+        .btn-danger:hover {
+            background: #b52b27;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+        .btn-warning {
+            background: #f0ad4e;
+            color: #1e2a47;
+        }
+        .btn-warning:hover {
+            background: #d98c2e;
+        }
+        .btn-sm {
+            padding: 7px 14px;
+            font-size: 0.8rem;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-ocr {
+            background: #8b5cf6;
+            color: white;
+        }
+        .btn-ocr:hover {
+            background: #7c3aed;
+        }
+        .btn-ocr:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .flex-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin: 15px 0 5px;
+        }
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 16px;
+            border-radius: 40px;
+            border: 1px solid #d0d9e8;
+            font-size: 1rem;
+        }
+        .search-box:focus {
+            border-color: #2a7de1;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(42,125,225,0.15);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        th {
+            background: #1e2a47;
+            color: white;
+            padding: 12px 8px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+        tr:hover td {
+            background: #f4f9ff;
+        }
+        .badge {
+            background: #e9ecf3;
+            padding: 3px 10px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #1e2a47;
+            display: inline-block;
+            margin: 1px 2px;
+        }
+        .badge-seri {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        .badge-tarih {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        .seri-list {
+            max-width: 200px;
+        }
+        .actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .actions button {
+            border: none;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .btn-edit {
+            background: #ffc107;
+            color: #1e2a47;
+        }
+        .btn-edit:hover {
+            background: #e0a800;
+        }
+        .btn-del {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-del:hover {
+            background: #b02a37;
+        }
+        .empty-row td {
+            text-align: center;
+            color: #6c7a92;
+            padding: 30px 0;
+        }
+        
+        /* SERİ PANELİ */
+        .seri-panel {
+            background: #f0f4ff;
+            border: 2px solid #dbeafe;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 15px 0;
+            grid-column: 1 / -1;
+        }
+        .seri-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .seri-panel-header h3 {
+            margin: 0;
+            color: #1e2a47;
+            font-size: 1.1rem;
+        }
+        .seri-panel-header .seri-count {
+            background: #1e2a47;
+            color: white;
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .seri-input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .seri-input-group input {
+            flex: 2;
+            min-width: 200px;
+            padding: 10px 14px;
+            border: 2px solid #d0d9e8;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            transition: 0.2s;
+        }
+        .seri-input-group input:focus {
+            border-color: #2a7de1;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(42,125,225,0.15);
+        }
+        .seri-input-group .btn {
+            min-width: auto;
+            padding: 10px 20px;
+        }
+        .seri-list-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 40px;
+            padding: 10px;
+            background: white;
+            border-radius: 12px;
+            border: 2px dashed #d0d9e8;
+        }
+        .seri-list-container.empty {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #9ca3af;
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+        .seri-item {
+            background: white;
+            border: 1px solid #dbeafe;
+            border-radius: 30px;
+            padding: 6px 12px 6px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: 0.2s;
+        }
+        .seri-item:hover {
+            border-color: #93c5fd;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .seri-item .seri-text {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .seri-item .seri-actions {
+            display: flex;
+            gap: 4px;
+        }
+        .seri-item .seri-actions button {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 2px 6px;
+            border-radius: 20px;
+            transition: 0.2s;
+        }
+        .seri-item .seri-actions .remove-btn {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .seri-item .seri-actions .remove-btn:hover {
+            background: #fee2e2;
+        }
+        
+        /* OCR MODAL */
+        .ocr-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .ocr-modal.active {
+            display: flex;
+        }
+        .ocr-modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            max-width: 550px;
+            width: 95%;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+        .ocr-modal-content h3 {
+            margin-top: 0;
+            color: #1e2a47;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ocr-modal-content .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6c7a92;
+        }
+        .ocr-modal-content .close-btn:hover {
+            color: #dc3545;
+        }
+        .ocr-camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        #ocr-video {
+            width: 100%;
+            display: block;
+            border-radius: 12px;
+            background: #1a1a2e;
+        }
+        #ocr-canvas {
+            display: none;
+        }
+        .ocr-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .ocr-controls button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.95rem;
+        }
+        .ocr-controls .btn-capture {
+            background: #28a745;
+            color: white;
+        }
+        .ocr-controls .btn-capture:hover {
+            background: #1e7e34;
+        }
+        .ocr-controls .btn-capture:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .ocr-controls .btn-close-camera {
+            background: #dc3545;
+            color: white;
+        }
+        .ocr-controls .btn-close-camera:hover {
+            background: #b02a37;
+        }
+        .ocr-result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f3f4f6;
+            border-radius: 12px;
+            display: none;
+        }
+        .ocr-result.active {
+            display: block;
+        }
+        .ocr-result .result-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1e2a47;
+            word-break: break-all;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #dbeafe;
+        }
+        .ocr-result .result-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .ocr-result .result-actions button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .ocr-result .result-actions .btn-use {
+            background: #28a745;
+            color: white;
+        }
+        .ocr-result .result-actions .btn-use:hover {
+            background: #1e7e34;
+        }
+        .ocr-result .result-actions .btn-retry {
+            background: #ffc107;
+            color: #1e2a47;
+        }
+        .ocr-result .result-actions .btn-retry:hover {
+            background: #e0a800;
+        }
+        .ocr-status {
+            text-align: center;
+            padding: 8px;
+            margin-top: 8px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            color: #6c7a92;
+        }
+        .ocr-status.loading {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .ocr-status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .ocr-status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #editIndex {
+            display: none;
+        }
+        .bilgi {
+            background: #d1ecf1;
+            padding: 8px 16px;
+            border-radius: 40px;
+            color: #0c5460;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 700px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 15px;
+            }
+            .seri-item .seri-text {
+                max-width: 150px;
+            }
+            .ocr-modal-content {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>
+        <span>📦 Sipariş Takip</span>
+        <span class="sync-status" id="syncStatus">🟢 Bağlandı</span>
+    </h1>
 
-    elif secim == "6":
-        kasa.faturalari_listele()
+    <!-- ANA FORM -->
+    <div class="form-grid" id="formGrid">
+        <div class="form-group">
+            <label>Müşteri Adı *</label>
+            <input type="text" id="musteriAdi" placeholder="Ahmet Yılmaz" />
+        </div>
+        <div class="form-group">
+            <label>Sipariş No *</label>
+            <input type="text" id="siparisNo" placeholder="SP-2026-001" />
+        </div>
+        <div class="form-group">
+            <label>Platform</label>
+            <select id="platform">
+                <option value="Makerpazar.com">Makerpazar.com</option>
+                <option value="hepsiburada">hepsiburada</option>
+                <option value="pazarama">pazarama</option>
+                <option value="Mağza">Mağza</option>
+                <option value="Trendyol">Trendyol</option>
+                <option value="n11">n11</option>
+                <option value="Amazon">Amazon</option>
+                <option value="idefix">idefix</option>
+                <option value="Diğer">Diğer</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Cihaz Adı</label>
+            <input type="text" id="cihazAdi" placeholder="iPhone 15 Pro" />
+        </div>
+        
+        <!-- SERİ PANELİ -->
+        <div class="seri-panel">
+            <div class="seri-panel-header">
+                <h3>🔢 Seri Numaraları</h3>
+                <span class="seri-count" id="seriSayac">0 adet</span>
+            </div>
+            
+            <div class="seri-input-group">
+                <input type="text" id="seriInput" placeholder="Seri numarasını girin veya OCR ile okuyun..." />
+                <button class="btn btn-ocr" id="ocrScanBtn">📷 OCR ile Oku</button>
+                <button class="btn btn-success" id="seriEkleBtn">➕ Ekle</button>
+                <button class="btn btn-danger" id="seriTemizleBtn">🗑️ Tümünü Temizle</button>
+            </div>
+            
+            <div class="seri-list-container" id="seriListContainer">
+                <span style="color:#9ca3af; font-style:italic;">Henüz seri numarası eklenmemiş</span>
+            </div>
+            
+            <input type="hidden" id="seriListesiHidden" value="" />
+        </div>
+        
+        <div class="form-group full-width">
+            <label>Tarih</label>
+            <input type="datetime-local" id="tarih" />
+        </div>
+        
+        <div class="form-group full-width">
+            <label>Not</label>
+            <textarea id="not" rows="2" placeholder="Ek notlar..."></textarea>
+        </div>
+        <div class="form-group full-width" style="flex-direction:row; gap:12px; align-items:center; flex-wrap:wrap;">
+            <button class="btn" id="kaydetBtn">💾 Kaydet</button>
+            <button class="btn btn-warning" id="vazgecBtn" style="display:none;">↩️ Vazgeç</button>
+            <span id="editIndex" style="background:#f0ad4e; padding:4px 14px; border-radius:40px; font-weight:600;">Düzenleniyor...</span>
+        </div>
+    </div>
 
-    elif secim == "7":
-        kasa.faturalari_listele()
-        no = int(input("Güncellemek istediğin fatura no: "))
-        durum = input("Yeni durum (Faturalandı/İptal): ")
-        kasa.fatura_durum_guncelle(no, durum)
+    <!-- ARAMA -->
+    <div class="flex-row">
+        <input type="text" class="search-box" id="aramaInput" placeholder="🔍 Müşteri, Sipariş No veya Seri No ile ara..." />
+        <button class="btn btn-success" id="temizleBtn" style="background:#6c7a92;">Temizle</button>
+        <span class="bilgi" id="kayitSayisi">Toplam: 0 kayıt</span>
+        <button class="btn btn-danger" id="yenileBtn" style="background:#17a2b8; min-width:auto; padding:10px 20px;">🔄 Yenile</button>
+    </div>
 
-    elif secim == "8":
-        print(f"\n💰 KASA BAKİYESİ: {kasa.bakiye} TL")
-        print(f"📦 Toplam Ürün: {len(kasa.urunler)}")
-        print(f"📄 Toplam Fatura: {len(kasa.faturalar)}")
+    <!-- TABLO -->
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Müşteri</th>
+                    <th>Sipariş No</th>
+                    <th>Platform</th>
+                    <th>Cihaz</th>
+                    <th>Seri Numaraları</th>
+                    <th>Tarih</th>
+                    <th>Not</th>
+                    <th style="min-width:110px;">İşlem</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr class="empty-row"><td colspan="8">Yükleniyor...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
-    elif secim == "9":
-        print("Çıkılıyor... Veriler kaydedildi.")
-        break
+<!-- OCR MODAL -->
+<div class="ocr-modal" id="ocrModal">
+    <div class="ocr-modal-content">
+        <h3>
+            📷 Seri Numarasını OCR ile Oku
+            <button class="close-btn" id="ocrCloseBtn">&times;</button>
+        </h3>
+        
+        <div class="ocr-camera-container">
+            <video id="ocr-video" autoplay playsinline></video>
+            <canvas id="ocr-canvas"></canvas>
+        </div>
+        
+        <div class="ocr-status" id="ocrStatus">📱 Kamerayı başlatmak için izin verin...</div>
+        
+        <div class="ocr-controls">
+            <button class="btn-capture" id="ocrCaptureBtn">📸 Fotoğraf Çek ve Oku</button>
+            <button class="btn-close-camera" id="ocrCloseCameraBtn">❌ Kapat</button>
+        </div>
+        
+        <div class="ocr-result" id="ocrResult">
+            <div style="font-weight:600; margin-bottom:5px;">📝 Okunan Metin:</div>
+            <div class="result-text" id="ocrResultText"></div>
+            <div class="result-actions">
+                <button class="btn-use" id="ocrUseBtn">✅ Kullan</button>
+                <button class="btn-retry" id="ocrRetryBtn">🔄 Tekrar Dene</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    else:
-        print("Geçersiz seçim!")
+<script>
+    // ============================================
+    // FIREBASE KONFIGÜRASYONU
+    // ============================================
+    const firebaseConfig = {
+        apiKey: "AIzaSyD99gfvSPtvkySfwQX7lQWBhkmLQPkdn7w",
+        authDomain: "mkrurun.firebaseapp.com",
+        databaseURL: "https://mkrurun-default-rtdb.firebaseio.com",
+        projectId: "mkrurun",
+        storageBucket: "mkrurun.firebasestorage.app",
+        messagingSenderId: "359273353735",
+        appId: "1:359273353735:web:08f72da16861fa4c6690a2"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // ============================================
+    // UYGULAMA
+    // ============================================
+    let siparisler = [];
+    let editMode = false;
+    let editKey = null;
+    let stream = null;
+    let isProcessing = false;
+
+    // DOM
+    const musteriAdi = document.getElementById('musteriAdi');
+    const siparisNo = document.getElementById('siparisNo');
+    const platform = document.getElementById('platform');
+    const cihazAdi = document.getElementById('cihazAdi');
+    const not = document.getElementById('not');
+    const tarih = document.getElementById('tarih');
+    const seriInput = document.getElementById('seriInput');
+    const seriEkleBtn = document.getElementById('seriEkleBtn');
+    const seriTemizleBtn = document.getElementById('seriTemizleBtn');
+    const seriListContainer = document.getElementById('seriListContainer');
+    const seriListesiHidden = document.getElementById('seriListesiHidden');
+    const seriSayac = document.getElementById('seriSayac');
+    const kaydetBtn = document.getElementById('kaydetBtn');
+    const vazgecBtn = document.getElementById('vazgecBtn');
+    const editIndexSpan = document.getElementById('editIndex');
+    const aramaInput = document.getElementById('aramaInput');
+    const temizleBtn = document.getElementById('temizleBtn');
+    const yenileBtn = document.getElementById('yenileBtn');
+    const tableBody = document.getElementById('tableBody');
+    const kayitSayisi = document.getElementById('kayitSayisi');
+    const syncStatus = document.getElementById('syncStatus');
+    
+    // OCR Elementleri
+    const ocrModal = document.getElementById('ocrModal');
+    const ocrCloseBtn = document.getElementById('ocrCloseBtn');
+    const ocrCloseCameraBtn = document.getElementById('ocrCloseCameraBtn');
+    const ocrStatus = document.getElementById('ocrStatus');
+    const ocrScanBtn = document.getElementById('ocrScanBtn');
+    const ocrVideo = document.getElementById('ocr-video');
+    const ocrCanvas = document.getElementById('ocr-canvas');
+    const ocrCaptureBtn = document.getElementById('ocrCaptureBtn');
+    const ocrResult = document.getElementById('ocrResult');
+    const ocrResultText = document.getElementById('ocrResultText');
+    const ocrUseBtn = document.getElementById('ocrUseBtn');
+    const ocrRetryBtn = document.getElementById('ocrRetryBtn');
+
+    let geciciSeriListesi = [];
+    let lastOcrResult = '';
+
+    // ============================================
+    // YARDIMCI FONKSİYONLAR
+    // ============================================
+    function formatDateForDisplay(dateStr) {
+        if (!dateStr) return '—';
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return dateStr;
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${day}.${month}.${year} ${hours}:${minutes}`;
+        } catch {
+            return dateStr;
+        }
+    }
+
+    function setDefaultDate() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        tarih.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    // ============================================
+    // OCR FONKSİYONLARI
+    // ============================================
+    async function startCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                },
+                audio: false
+            });
+            ocrVideo.srcObject = stream;
+            await ocrVideo.play();
+            return true;
+        } catch (err) {
+            console.error('Kamera başlatma hatası:', err);
+            ocrStatus.textContent = '❌ Kameraya erişilemedi: ' + err.message;
+            ocrStatus.className = 'ocr-status error';
+            return false;
+        }
+    }
+
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        ocrVideo.srcObject = null;
+        ocrVideo.pause();
+    }
+
+    async function performOCR() {
+        if (isProcessing) return;
+        isProcessing = true;
+        ocrCaptureBtn.disabled = true;
+        
+        ocrStatus.textContent = '⏳ Fotoğraf işleniyor...';
+        ocrStatus.className = 'ocr-status loading';
+        ocrResult.classList.remove('active');
+        
+        try {
+            // Videodan frame yakala
+            const canvas = ocrCanvas;
+            const context = canvas.getContext('2d');
+            canvas.width = ocrVideo.videoWidth || 640;
+            canvas.height = ocrVideo.videoHeight || 480;
+            context.drawImage(ocrVideo, 0, 0, canvas.width, canvas.height);
+            
+            // Görüntüyü veri URL'ye çevir
+            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // Tesseract ile OCR işlemi
+            ocrStatus.innerHTML = '<span class="loading-spinner"></span> OCR işlemi devam ediyor...';
+            
+            const result = await Tesseract.recognize(
+                imageData,
+                'tur',
+                {
+                    logger: (m) => {
+                        if (m.status === 'recognizing text') {
+                            ocrStatus.innerHTML = `<span class="loading-spinner"></span> Okunuyor: ${Math.round(m.progress * 100)}%`;
+                        }
+                    }
+                }
+            );
+            
+            const text = result.data.text.trim();
+            
+            if (text && text.length > 0) {
+                lastOcrResult = text;
+                ocrResultText.textContent = text;
+                ocrResult.classList.add('active');
+                ocrStatus.textContent = '✅ OCR başarıyla tamamlandı!';
+                ocrStatus.className = 'ocr-status success';
+            } else {
+                ocrStatus.textContent = '❌ Metin okunamadı. Lütfen tekrar deneyin.';
+                ocrStatus.className = 'ocr-status error';
+                ocrResult.classList.remove('active');
+            }
+            
+        } catch (err) {
+            console.error('OCR hatası:', err);
+            ocrStatus.textContent = '❌ OCR hatası: ' + err.message;
+            ocrStatus.className = 'ocr-status error';
+        }
+        
+        isProcessing = false;
+        ocrCaptureBtn.disabled = false;
+    }
+
+    function useOCRResult() {
+        if (lastOcrResult) {
+            seriInput.value = lastOcrResult;
+            seriEkle();
+            closeOCRModal();
+        }
+    }
+
+    function openOCRModal() {
+        ocrModal.classList.add('active');
+        ocrResult.classList.remove('active');
+        ocrStatus.textContent = '📱 Kameraya erişim sağlanıyor...';
+        ocrStatus.className = 'ocr-status';
+        ocrCaptureBtn.disabled = false;
+        lastOcrResult = '';
+        
+        startCamera().then(success => {
+            if (success) {
+                ocrStatus.textContent = '📷 Seri numarasını kameraya gösterin ve "Fotoğraf Çek" butonuna tıklayın.';
+                ocrStatus.className = 'ocr-status';
+            }
+        });
+    }
+
+    function closeOCRModal() {
+        stopCamera();
+        ocrModal.classList.remove('active');
+        ocrResult.classList.remove('active');
+        ocrStatus.textContent = '📱 Kamerayı başlatmak için izin verin...';
+        ocrStatus.className = 'ocr-status';
+        ocrCaptureBtn.disabled = false;
+        isProcessing = false;
+    }
+
+    // ============================================
+    // SERİ PANELİ FONKSİYONLARI
+    // ============================================
+    function seriListesiniGuncelle() {
+        seriListContainer.innerHTML = '';
+        
+        if (geciciSeriListesi.length === 0) {
+            seriListContainer.classList.add('empty');
+            seriListContainer.innerHTML = '<span style="color:#9ca3af; font-style:italic;">Henüz seri numarası eklenmemiş</span>';
+            seriSayac.textContent = '0 adet';
+            seriListesiHidden.value = JSON.stringify(geciciSeriListesi);
+            return;
+        }
+        
+        seriListContainer.classList.remove('empty');
+        
+        geciciSeriListesi.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'seri-item';
+            
+            div.innerHTML = `
+                <span class="seri-text">${item}</span>
+                <span class="seri-actions">
+                    <button class="remove-btn" data-index="${index}" title="Sil">×</button>
+                </span>
+            `;
+            
+            div.querySelector('.remove-btn').addEventListener('click', function(e) {
+                e.stopPropagation();
+                const idx = parseInt(this.dataset.index);
+                geciciSeriListesi.splice(idx, 1);
+                seriListesiniGuncelle();
+            });
+            
+            seriListContainer.appendChild(div);
+        });
+        
+        seriSayac.textContent = `${geciciSeriListesi.length} adet`;
+        seriListesiHidden.value = JSON.stringify(geciciSeriListesi);
+    }
+
+    function seriEkle() {
+        const val = seriInput.value.trim();
+        if (val === '') {
+            alert('Lütfen bir seri numarası girin veya OCR ile okuyun.');
+            seriInput.focus();
+            return;
+        }
+        geciciSeriListesi.push(val);
+        seriInput.value = '';
+        seriListesiniGuncelle();
+        seriInput.focus();
+    }
+
+    function seriTemizle() {
+        if (geciciSeriListesi.length === 0) return;
+        if (confirm('Tüm seri numaralarını silmek istediğinize emin misiniz?')) {
+            geciciSeriListesi = [];
+            seriListesiniGuncelle();
+        }
+    }
+
+    // ============================================
+    // FORM İŞLEMLERİ
+    // ============================================
+    function formuTemizle() {
+        musteriAdi.value = '';
+        siparisNo.value = '';
+        platform.value = 'Makerpazar.com';
+        cihazAdi.value = '';
+        not.value = '';
+        setDefaultDate();
+        geciciSeriListesi = [];
+        seriListesiniGuncelle();
+        seriInput.value = '';
+        editMode = false;
+        editKey = null;
+        vazgecBtn.style.display = 'none';
+        editIndexSpan.style.display = 'none';
+        kaydetBtn.textContent = '💾 Kaydet';
+    }
+
+    // ============================================
+    // FIREBASE İŞLEMLERİ
+    // ============================================
+    function verileriYukle() {
+        syncStatus.textContent = '⏳ Yükleniyor...';
+        syncStatus.className = 'sync-status';
+        
+        const ref = database.ref('siparisler');
+        ref.on('value', (snapshot) => {
+            const data = snapshot.val();
+            siparisler = [];
+            if (data) {
+                Object.keys(data).forEach(key => {
+                    const item = data[key];
+                    siparisler.push({
+                        key: key,
+                        musteri: item.musteri || '',
+                        siparisNo: item.siparisNo || '',
+                        platform: item.platform || '',
+                        cihaz: item.cihaz || '',
+                        seriListesi: item.seriListesi || [],
+                        tarih: item.tarih || '',
+                        not: item.not || ''
+                    });
+                });
+                siparisler.sort((a, b) => a.siparisNo.localeCompare(b.siparisNo));
+            }
+            listeyiGoster();
+            syncStatus.textContent = '🟢 Bağlandı';
+            syncStatus.className = 'sync-status';
+        }, (error) => {
+            console.error('Veri yükleme hatası:', error);
+            syncStatus.textContent = '🔴 Bağlantı Hatası';
+            syncStatus.className = 'sync-status offline';
+            tableBody.innerHTML = `<tr class="empty-row"><td colspan="8">❌ Veri yüklenemedi: ${error.message}</td></tr>`;
+        });
+    }
+
+    function kaydetFirebase(data) {
+        const ref = database.ref('siparisler');
+        const newRef = ref.push();
+        return newRef.set(data);
+    }
+
+    function guncelleFirebase(key, data) {
+        const ref = database.ref(`siparisler/${key}`);
+        return ref.update(data);
+    }
+
+    function silFirebase(key) {
+        const ref = database.ref(`siparisler/${key}`);
+        return ref.remove();
+    }
+
+    // ============================================
+    // LİSTELEME
+    // ============================================
+    function listeyiGoster(veri) {
+        const liste = veri || siparisler;
+        tableBody.innerHTML = '';
+        
+        if (liste.length === 0) {
+            tableBody.innerHTML = `<tr class="empty-row"><td colspan="8">📭 Kayıt bulunamadı.</td></tr>`;
+            kayitSayisi.textContent = `Toplam: 0 kayıt`;
+            return;
+        }
+
+        liste.forEach((item) => {
+            const tr = document.createElement('tr');
+            const seriText = item.seriListesi && item.seriListesi.length > 0 
+                ? item.seriListesi.map(s => `<span class="badge badge-seri">${s}</span>`).join(' ') 
+                : '—';
+            
+            const tarihText = item.tarih ? `<span class="badge badge-tarih">${formatDateForDisplay(item.tarih)}</span>` : '—';
+
+            tr.innerHTML = `
+                <td><strong>${item.musteri || ''}</strong></td>
+                <td>${item.siparisNo || ''}</td>
+                <td><span class="badge">${item.platform || ''}</span></td>
+                <td>${item.cihaz || ''}</td>
+                <td class="seri-list">${seriText}</td>
+                <td>${tarihText}</td>
+                <td style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.not || ''}</td>
+                <td>
+                    <div class="actions">
+                        <button class="btn-edit" data-key="${item.key}">✏️ Düzenle</button>
+                        <button class="btn-del" data-key="${item.key}">🗑️ Sil</button>
+                    </div>
+                </td>
+            `;
+            tableBody.appendChild(tr);
+        });
+
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const key = this.dataset.key;
+                duzenle(key);
+            });
+        });
+        document.querySelectorAll('.btn-del').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const key = this.dataset.key;
+                if (confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
+                    silFirebase(key)
+                        .catch(err => alert('Silme hatası: ' + err.message));
+                }
+            });
+        });
+
+        kayitSayisi.textContent = `Toplam: ${liste.length} kayıt`;
+    }
+
+    function aramaYap() {
+        const terim = aramaInput.value.trim().toLowerCase();
+        if (terim === '') {
+            listeyiGoster(siparisler);
+            return;
+        }
+        const sonuc = siparisler.filter(item => {
+            const musteriEslesir = item.musteri.toLowerCase().includes(terim);
+            const siparisEslesir = item.siparisNo.toLowerCase().includes(terim);
+            let seriEslesir = false;
+            if (item.seriListesi) {
+                seriEslesir = item.seriListesi.some(s => s.toLowerCase().includes(terim));
+            }
+            return musteriEslesir || siparisEslesir || seriEslesir;
+        });
+        listeyiGoster(sonuc);
+    }
+
+    // ============================================
+    // CRUD İŞLEMLERİ
+    // ============================================
+    function yeniKayit() {
+        const musteri = musteriAdi.value.trim();
+        const siparis = siparisNo.value.trim();
+        if (!musteri || !siparis) {
+            alert('Müşteri Adı ve Sipariş No zorunludur!');
+            return;
+        }
+
+        const data = {
+            musteri: musteri,
+            siparisNo: siparis,
+            platform: platform.value,
+            cihaz: cihazAdi.value.trim(),
+            seriListesi: [...geciciSeriListesi],
+            tarih: tarih.value || '',
+            not: not.value.trim(),
+            timestamp: Date.now()
+        };
+
+        kaydetFirebase(data)
+            .then(() => {
+                formuTemizle();
+            })
+            .catch(err => {
+                alert('Kayıt hatası: ' + err.message);
+            });
+    }
+
+    function duzenle(key) {
+        const item = siparisler.find(s => s.key === key);
+        if (!item) return;
+        
+        editMode = true;
+        editKey = key;
+
+        musteriAdi.value = item.musteri || '';
+        siparisNo.value = item.siparisNo || '';
+        platform.value = item.platform || 'Makerpazar.com';
+        cihazAdi.value = item.cihaz || '';
+        not.value = item.not || '';
+        
+        if (item.tarih) {
+            try {
+                const date = new Date(item.tarih);
+                if (!isNaN(date.getTime())) {
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    tarih.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                }
+            } catch {}
+        } else {
+            setDefaultDate();
+        }
+        
+        geciciSeriListesi = item.seriListesi ? [...item.seriListesi] : [];
+        seriListesiniGuncelle();
+        seriInput.value = '';
+
+        vazgecBtn.style.display = 'inline-block';
+        editIndexSpan.style.display = 'inline-block';
+        editIndexSpan.textContent = `Düzenleniyor: ${item.siparisNo}`;
+        kaydetBtn.textContent = '🔄 Güncelle';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function guncelle() {
+        if (!editKey) return;
+        
+        const musteri = musteriAdi.value.trim();
+        const siparis = siparisNo.value.trim();
+        if (!musteri || !siparis) {
+            alert('Müşteri Adı ve Sipariş No zorunludur!');
+            return;
+        }
+
+        const data = {
+            musteri: musteri,
+            siparisNo: siparis,
+            platform: platform.value,
+            cihaz: cihazAdi.value.trim(),
+            seriListesi: [...geciciSeriListesi],
+            tarih: tarih.value || '',
+            not: not.value.trim(),
+            timestamp: Date.now()
+        };
+
+        guncelleFirebase(editKey, data)
+            .then(() => {
+                formuTemizle();
+            })
+            .catch(err => {
+                alert('Güncelleme hatası: ' + err.message);
+            });
+    }
+
+    // ============================================
+    // OLAY BAĞLAMALARI
+    // ============================================
+    seriEkleBtn.addEventListener('click', seriEkle);
+    seriTemizleBtn.addEventListener('click', seriTemizle);
+    seriInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            seriEkle();
+        }
+    });
+
+    kaydetBtn.addEventListener('click', function() {
+        if (editMode) {
+            guncelle();
+        } else {
+            yeniKayit();
+        }
+    });
+
+    vazgecBtn.addEventListener('click', function() {
+        formuTemizle();
+        listeyiGoster();
+    });
+
+    aramaInput.addEventListener('input', aramaYap);
+
+    temizleBtn.addEventListener('click', function() {
+        aramaInput.value = '';
+        listeyiGoster(siparisler);
+    });
+
+    yenileBtn.addEventListener('click', function() {
+        verileriYukle();
+    });
+
+    // OCR Olayları
+    ocrScanBtn.addEventListener('click', openOCRModal);
+    ocrCloseBtn.addEventListener('click', closeOCRModal);
+    ocrCloseCameraBtn.addEventListener('click', closeOCRModal);
+    ocrCaptureBtn.addEventListener('click', performOCR);
+    ocrUseBtn.addEventListener('click', useOCRResult);
+    ocrRetryBtn.addEventListener('click', function() {
+        ocrResult.classList.remove('active');
+        ocrStatus.textContent = '📷 Yeni fotoğraf çekmek için "Fotoğraf Çek" butonuna tıklayın.';
+        ocrStatus.className = 'ocr-status';
+        lastOcrResult = '';
+    });
+
+    // Modal kapatma (dışarı tıklama)
+    ocrModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeOCRModal();
+        }
+    });
+
+    // ============================================
+    // BAŞLANGIÇ
+    // ============================================
+    setDefaultDate();
+    formuTemizle();
+    verileriYukle();
+
+    console.log('✅ Firebase Sipariş Takip Sistemi Başlatıldı!');
+    console.log('📊 Veritabanı: mkrurun');
+    console.log('📸 OCR özelliği aktif!');
+</script>
+</body>
+</html>
+```
+
+🎯 OCR Özelliği Nasıl Çalışır:
+
+1. Kamera ile Fotoğraf Çekme
+
+· "📷 OCR ile Oku" butonuna tıklayın
+· Kamera açılır, seri numarasını ekrana getirin
+· "Fotoğraf Çek ve Oku" butonuna tıklayın
+
+2. Otomatik Metin Tanıma
+
+· Fotoğraf çekilir ve Tesseract.js ile işlenir
+· Türkçe dil desteği ile metin okunur
+· İlerleme yüzdesi gösterilir
+
+3. Sonucu Kullanma
+
+· Okunan metin ekranda gösterilir
+· "Kullan" butonu ile seri input'una eklenir
+· Otomatik olarak seri listesine eklenir
+
+📱 Kullanım Adımları:
+
+1. Seri numarasının fotoğrafını çekin
+2. OCR otomatik olarak metni okusun
+3. Okunan metni kontrol edin
+4. "Kullan" butonuna tıklayın
+5. Seri otomatik olarak listeye eklenir
+
+⚡ Avantajlar:
+
+· Hızlı giriş: El ile yazmaya gerek yok
+· Düşük hata: OCR doğru okur
+· Türkçe destek: Türkçe karakterleri tanır
+· Mobil uyumlu: Telefon kamerası ile çalışır
+
+Artık seri numaralarını fotoğraf çekerek ekleyebilirsiniz! 📸
