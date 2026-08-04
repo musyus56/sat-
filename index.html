@@ -1,6 +1,3 @@
-Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu yapacağım. Yani kamera açıldığında ortada dikdörtgen bir alan olacak, sadece o alandaki metni okuyacak.
-
-```html
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -12,7 +9,10 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
-    <!-- Tesseract.js - OCR Kütüphanesi -->
+    <!-- QR Kod Kütüphanesi -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    
+    <!-- Tesseract.js - OCR Kütüphanesi (Yedek) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     
     <style>
@@ -137,16 +137,12 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             cursor: pointer;
             transition: 0.2s;
         }
-        .btn-ocr {
+        .btn-scan {
             background: #8b5cf6;
             color: white;
         }
-        .btn-ocr:hover {
+        .btn-scan:hover {
             background: #7c3aed;
-        }
-        .btn-ocr:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
         }
         
         .flex-row {
@@ -363,8 +359,8 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             background: #fee2e2;
         }
         
-        /* OCR MODAL - IBAN MANTIĞI */
-        .ocr-modal {
+        /* SCAN MODAL */
+        .scan-modal {
             display: none;
             position: fixed;
             top: 0;
@@ -376,47 +372,87 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             justify-content: center;
             align-items: center;
         }
-        .ocr-modal.active {
+        .scan-modal.active {
             display: flex;
         }
-        .ocr-modal-content {
+        .scan-modal-content {
             background: #1a1a2e;
             padding: 20px;
             border-radius: 20px;
-            max-width: 480px;
+            max-width: 500px;
             width: 95%;
-            position: relative;
+            max-height: 95vh;
+            overflow-y: auto;
         }
-        .ocr-modal-content .header {
+        .scan-modal-content .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
             color: white;
         }
-        .ocr-modal-content .header h3 {
+        .scan-modal-content .header h3 {
             margin: 0;
             color: white;
             font-size: 1rem;
         }
-        .ocr-modal-content .close-btn {
+        .scan-modal-content .close-btn {
             background: none;
             border: none;
             font-size: 1.5rem;
             cursor: pointer;
             color: #9ca3af;
         }
-        .ocr-modal-content .close-btn:hover {
+        .scan-modal-content .close-btn:hover {
             color: #dc3545;
         }
         
-        .ocr-camera-wrapper {
+        .scan-methods {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .scan-methods button {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .scan-methods button:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .scan-methods button.active {
+            border-color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.2);
+        }
+        
+        #qr-reader {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        #qr-reader video {
+            border-radius: 12px;
+        }
+        
+        .scan-camera-wrapper {
             position: relative;
             width: 100%;
             border-radius: 12px;
             overflow: hidden;
             background: #000;
             aspect-ratio: 4/3;
+            display: none;
+        }
+        .scan-camera-wrapper.active {
+            display: block;
         }
         #ocr-video {
             width: 100%;
@@ -428,7 +464,7 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             display: none;
         }
         
-        /* IBAN MANTIĞI - YATAY DİKDÖRTGEN TARAMA ALANI */
+        /* IBAN MANTIĞI - TARAMA ALANI */
         .scan-overlay {
             position: absolute;
             top: 0;
@@ -497,20 +533,18 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             animation: scan-move 2.5s ease-in-out infinite;
             opacity: 0.6;
         }
-        
         .scan-overlay .scan-label {
             position: absolute;
             bottom: 8%;
             left: 50%;
             transform: translateX(-50%);
             color: rgba(255,255,255,0.7);
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             text-align: center;
             background: rgba(0,0,0,0.6);
-            padding: 6px 16px;
+            padding: 4px 14px;
             border-radius: 30px;
             white-space: nowrap;
-            letter-spacing: 0.5px;
         }
         
         @keyframes pulse-border {
@@ -522,46 +556,44 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             50% { top: 80%; opacity: 0.8; }
         }
         
-        .ocr-controls {
+        .scan-controls {
             display: flex;
             gap: 10px;
-            margin-top: 15px;
+            margin-top: 12px;
             justify-content: center;
             flex-wrap: wrap;
         }
-        .ocr-controls button {
-            padding: 12px 28px;
+        .scan-controls button {
+            padding: 12px 24px;
             border: none;
             border-radius: 30px;
             font-weight: 600;
             cursor: pointer;
             transition: 0.2s;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
-        .ocr-controls .btn-capture {
+        .scan-controls .btn-capture {
             background: #00ff64;
             color: #1a1a2e;
             flex: 1;
-            min-width: 120px;
+            min-width: 100px;
         }
-        .ocr-controls .btn-capture:hover {
+        .scan-controls .btn-capture:hover {
             background: #00e05a;
-            transform: scale(1.02);
         }
-        .ocr-controls .btn-capture:disabled {
+        .scan-controls .btn-capture:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
         }
-        .ocr-controls .btn-close-camera {
+        .scan-controls .btn-close-camera {
             background: #dc3545;
             color: white;
         }
-        .ocr-controls .btn-close-camera:hover {
+        .scan-controls .btn-close-camera:hover {
             background: #b02a37;
         }
         
-        .ocr-status {
+        .scan-status {
             text-align: center;
             padding: 8px 12px;
             margin-top: 10px;
@@ -570,15 +602,15 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             color: #9ca3af;
             background: rgba(255,255,255,0.05);
         }
-        .ocr-status.loading {
+        .scan-status.loading {
             background: rgba(254, 243, 199, 0.15);
             color: #fcd34d;
         }
-        .ocr-status.success {
+        .scan-status.success {
             background: rgba(16, 185, 129, 0.15);
             color: #34d399;
         }
-        .ocr-status.error {
+        .scan-status.error {
             background: rgba(239, 68, 68, 0.15);
             color: #f87171;
         }
@@ -599,7 +631,7 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             100% { transform: rotate(360deg); }
         }
         
-        .ocr-result {
+        .scan-result {
             margin-top: 12px;
             padding: 12px 16px;
             background: rgba(255,255,255,0.08);
@@ -607,18 +639,18 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             display: none;
             border: 1px solid rgba(0, 255, 100, 0.2);
         }
-        .ocr-result.active {
+        .scan-result.active {
             display: block;
         }
-        .ocr-result .result-label {
+        .scan-result .result-label {
             font-size: 0.7rem;
             color: #9ca3af;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 4px;
         }
-        .ocr-result .result-text {
-            font-size: 1.1rem;
+        .scan-result .result-text {
+            font-size: 1rem;
             font-weight: 600;
             color: white;
             word-break: break-all;
@@ -627,12 +659,31 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             border-radius: 8px;
             font-family: 'Courier New', monospace;
         }
-        .ocr-result .result-actions {
+        .scan-result .result-edit {
+            margin-top: 6px;
+            display: flex;
+            gap: 6px;
+        }
+        .scan-result .result-edit input {
+            flex: 1;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3);
+            color: white;
+            font-size: 0.9rem;
+            font-family: 'Courier New', monospace;
+        }
+        .scan-result .result-edit input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+        }
+        .scan-result .result-actions {
             display: flex;
             gap: 10px;
-            margin-top: 10px;
+            margin-top: 8px;
         }
-        .ocr-result .result-actions button {
+        .scan-result .result-actions button {
             padding: 8px 20px;
             border: none;
             border-radius: 30px;
@@ -641,19 +692,19 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             transition: 0.2s;
             font-size: 0.85rem;
         }
-        .ocr-result .result-actions .btn-use {
+        .scan-result .result-actions .btn-use {
             background: #00ff64;
             color: #1a1a2e;
             flex: 1;
         }
-        .ocr-result .result-actions .btn-use:hover {
+        .scan-result .result-actions .btn-use:hover {
             background: #00e05a;
         }
-        .ocr-result .result-actions .btn-retry {
+        .scan-result .result-actions .btn-retry {
             background: rgba(255,255,255,0.1);
             color: white;
         }
-        .ocr-result .result-actions .btn-retry:hover {
+        .scan-result .result-actions .btn-retry:hover {
             background: rgba(255,255,255,0.2);
         }
         
@@ -678,15 +729,15 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             .seri-item .seri-text {
                 max-width: 150px;
             }
-            .ocr-modal-content {
+            .scan-modal-content {
                 padding: 12px;
+            }
+            .scan-methods button {
+                font-size: 0.75rem;
+                padding: 8px;
             }
             .scan-overlay .scan-area {
                 height: 22%;
-            }
-            .ocr-controls button {
-                padding: 10px 20px;
-                font-size: 0.85rem;
             }
         }
     </style>
@@ -735,8 +786,8 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             </div>
             
             <div class="seri-input-group">
-                <input type="text" id="seriInput" placeholder="Seri numarasını girin veya OCR ile okuyun..." />
-                <button class="btn btn-ocr" id="ocrScanBtn">📷 OCR ile Oku</button>
+                <input type="text" id="seriInput" placeholder="Seri numarasını girin veya QR/OCR ile okuyun..." />
+                <button class="btn btn-scan" id="scanBtn">📷 QR / OCR Oku</button>
                 <button class="btn btn-success" id="seriEkleBtn">➕ Ekle</button>
                 <button class="btn btn-danger" id="seriTemizleBtn">🗑️ Tümünü Temizle</button>
             </div>
@@ -794,19 +845,27 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
     </div>
 </div>
 
-<!-- OCR MODAL - IBAN MANTIĞI -->
-<div class="ocr-modal" id="ocrModal">
-    <div class="ocr-modal-content">
+<!-- SCAN MODAL -->
+<div class="scan-modal" id="scanModal">
+    <div class="scan-modal-content">
         <div class="header">
             <h3>📷 Seri Numarasını Oku</h3>
-            <button class="close-btn" id="ocrCloseBtn">&times;</button>
+            <button class="close-btn" id="scanCloseBtn">&times;</button>
         </div>
         
-        <div class="ocr-camera-wrapper">
+        <!-- Yöntem Seçimi -->
+        <div class="scan-methods">
+            <button id="methodQR" class="active">📱 QR Kod</button>
+            <button id="methodOCR">📸 OCR (Deneysel)</button>
+        </div>
+        
+        <!-- QR Okuyucu -->
+        <div id="qr-reader"></div>
+        
+        <!-- OCR Kamera -->
+        <div class="scan-camera-wrapper" id="ocrCameraWrapper">
             <video id="ocr-video" autoplay playsinline></video>
             <canvas id="ocr-canvas"></canvas>
-            
-            <!-- YATAY DİKDÖRTGEN TARAMA ALANI - IBAN MANTIĞI -->
             <div class="scan-overlay">
                 <div class="scan-area">
                     <span class="corner tl"></span>
@@ -819,19 +878,22 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             </div>
         </div>
         
-        <div class="ocr-status" id="ocrStatus">📱 Kamerayı başlatmak için izin verin...</div>
+        <div class="scan-status" id="scanStatus">📱 QR kodu veya seri numarasını gösterin...</div>
         
-        <div class="ocr-controls">
-            <button class="btn-capture" id="ocrCaptureBtn">📸 Fotoğraf Çek</button>
-            <button class="btn-close-camera" id="ocrCloseCameraBtn">❌ Kapat</button>
+        <div class="scan-controls">
+            <button class="btn-capture" id="scanCaptureBtn" style="display:none;">📸 Fotoğraf Çek</button>
+            <button class="btn-close-camera" id="scanCloseCameraBtn">❌ Kapat</button>
         </div>
         
-        <div class="ocr-result" id="ocrResult">
+        <div class="scan-result" id="scanResult">
             <div class="result-label">📝 OKUNAN METİN</div>
-            <div class="result-text" id="ocrResultText"></div>
+            <div class="result-text" id="scanResultText"></div>
+            <div class="result-edit">
+                <input type="text" id="scanResultEdit" placeholder="Yanlışsa düzeltin..." />
+            </div>
             <div class="result-actions">
-                <button class="btn-use" id="ocrUseBtn">✅ Kullan ve Ekle</button>
-                <button class="btn-retry" id="ocrRetryBtn">🔄 Tekrar Dene</button>
+                <button class="btn-use" id="scanUseBtn">✅ Kullan ve Ekle</button>
+                <button class="btn-retry" id="scanRetryBtn">🔄 Tekrar Dene</button>
             </div>
         </div>
     </div>
@@ -860,8 +922,11 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
     let siparisler = [];
     let editMode = false;
     let editKey = null;
+    let html5QrCode = null;
+    let isScanning = false;
     let stream = null;
     let isProcessing = false;
+    let currentMethod = 'qr';
 
     // DOM
     const musteriAdi = document.getElementById('musteriAdi');
@@ -886,22 +951,27 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
     const kayitSayisi = document.getElementById('kayitSayisi');
     const syncStatus = document.getElementById('syncStatus');
     
-    // OCR Elementleri
-    const ocrModal = document.getElementById('ocrModal');
-    const ocrCloseBtn = document.getElementById('ocrCloseBtn');
-    const ocrCloseCameraBtn = document.getElementById('ocrCloseCameraBtn');
-    const ocrStatus = document.getElementById('ocrStatus');
-    const ocrScanBtn = document.getElementById('ocrScanBtn');
+    // Scan Elementleri
+    const scanModal = document.getElementById('scanModal');
+    const scanCloseBtn = document.getElementById('scanCloseBtn');
+    const scanCloseCameraBtn = document.getElementById('scanCloseCameraBtn');
+    const scanStatus = document.getElementById('scanStatus');
+    const scanBtn = document.getElementById('scanBtn');
+    const scanCaptureBtn = document.getElementById('scanCaptureBtn');
+    const scanResult = document.getElementById('scanResult');
+    const scanResultText = document.getElementById('scanResultText');
+    const scanResultEdit = document.getElementById('scanResultEdit');
+    const scanUseBtn = document.getElementById('scanUseBtn');
+    const scanRetryBtn = document.getElementById('scanRetryBtn');
+    const methodQR = document.getElementById('methodQR');
+    const methodOCR = document.getElementById('methodOCR');
+    const ocrCameraWrapper = document.getElementById('ocrCameraWrapper');
     const ocrVideo = document.getElementById('ocr-video');
     const ocrCanvas = document.getElementById('ocr-canvas');
-    const ocrCaptureBtn = document.getElementById('ocrCaptureBtn');
-    const ocrResult = document.getElementById('ocrResult');
-    const ocrResultText = document.getElementById('ocrResultText');
-    const ocrUseBtn = document.getElementById('ocrUseBtn');
-    const ocrRetryBtn = document.getElementById('ocrRetryBtn');
+    const qrReader = document.getElementById('qr-reader');
 
     let geciciSeriListesi = [];
-    let lastOcrResult = '';
+    let lastScanResult = '';
 
     // ============================================
     // YARDIMCI FONKSİYONLAR
@@ -933,9 +1003,84 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
     }
 
     // ============================================
-    // OCR FONKSİYONLARI - IBAN MANTIĞI
+    // QR KOD FONKSİYONLARI
     // ============================================
-    async function startCamera() {
+    async function startQRScanner() {
+        if (isScanning) return;
+        
+        scanStatus.textContent = '📱 Kameraya erişim sağlanıyor...';
+        scanStatus.className = 'scan-status';
+        qrReader.style.display = 'block';
+        ocrCameraWrapper.classList.remove('active');
+        scanCaptureBtn.style.display = 'none';
+        
+        try {
+            html5QrCode = new Html5Qrcode("qr-reader");
+            
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            };
+            
+            isScanning = true;
+            
+            await html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                onQRSuccess,
+                onQRError
+            );
+            
+            scanStatus.textContent = '📷 QR kodu kameraya gösterin...';
+            scanStatus.className = 'scan-status';
+            
+        } catch (err) {
+            console.error('QR kamera hatası:', err);
+            scanStatus.textContent = '❌ Kamera başlatılamadı: ' + err.message;
+            scanStatus.className = 'scan-status error';
+            isScanning = false;
+        }
+    }
+
+    function onQRSuccess(decodedText) {
+        scanStatus.textContent = '✅ QR kod okundu!';
+        scanStatus.className = 'scan-status success';
+        
+        lastScanResult = decodedText;
+        scanResultText.textContent = decodedText;
+        scanResultEdit.value = decodedText;
+        scanResult.classList.add('active');
+        
+        setTimeout(() => {
+            stopQRScanner();
+        }, 1000);
+    }
+
+    function onQRError(errorMessage) {
+        // Hata mesajlarını gösterme
+    }
+
+    function stopQRScanner() {
+        if (html5QrCode && isScanning) {
+            try {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                    isScanning = false;
+                }).catch(err => {
+                    console.error('QR durdurma hatası:', err);
+                    isScanning = false;
+                });
+            } catch (e) {
+                isScanning = false;
+            }
+        }
+    }
+
+    // ============================================
+    // OCR FONKSİYONLARI (Yedek)
+    // ============================================
+    async function startOCRCamera() {
         try {
             stream = await navigator.mediaDevices.getUserMedia({
                 video: { 
@@ -947,34 +1092,42 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             });
             ocrVideo.srcObject = stream;
             await ocrVideo.play();
+            
+            qrReader.style.display = 'none';
+            ocrCameraWrapper.classList.add('active');
+            scanCaptureBtn.style.display = 'block';
+            
+            scanStatus.textContent = '📷 Seri numarasını dikdörtgen alana getirin ve "Fotoğraf Çek" butonuna tıklayın.';
+            scanStatus.className = 'scan-status';
+            
             return true;
         } catch (err) {
-            console.error('Kamera başlatma hatası:', err);
-            ocrStatus.textContent = '❌ Kameraya erişilemedi: ' + err.message;
-            ocrStatus.className = 'ocr-status error';
+            console.error('OCR kamera hatası:', err);
+            scanStatus.textContent = '❌ Kameraya erişilemedi: ' + err.message;
+            scanStatus.className = 'scan-status error';
             return false;
         }
     }
 
-    function stopCamera() {
+    function stopOCRCamera() {
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
             stream = null;
         }
         ocrVideo.srcObject = null;
         ocrVideo.pause();
+        ocrCameraWrapper.classList.remove('active');
+        scanCaptureBtn.style.display = 'none';
     }
 
-    // Sadece dikdörtgen alanı kırp
-    function cropToScanArea(imageData, width, height) {
+    function cropToScanArea(videoWidth, videoHeight) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
-        // Dikdörtgen alanı hesapla (ortada, genişlik %85, yükseklik %28)
-        const cropWidth = width * 0.85;
-        const cropHeight = height * 0.28;
-        const cropX = (width - cropWidth) / 2;
-        const cropY = (height - cropHeight) / 2;
+        const cropWidth = videoWidth * 0.85;
+        const cropHeight = videoHeight * 0.28;
+        const cropX = (videoWidth - cropWidth) / 2;
+        const cropY = (videoHeight - cropHeight) / 2;
         
         canvas.width = cropWidth;
         canvas.height = cropHeight;
@@ -987,21 +1140,20 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
     async function performOCR() {
         if (isProcessing) return;
         isProcessing = true;
-        ocrCaptureBtn.disabled = true;
+        scanCaptureBtn.disabled = true;
         
-        ocrStatus.innerHTML = '<span class="loading-spinner"></span> Fotoğraf işleniyor...';
-        ocrStatus.className = 'ocr-status loading';
-        ocrResult.classList.remove('active');
+        scanStatus.innerHTML = '<span class="loading-spinner"></span> Fotoğraf işleniyor...';
+        scanStatus.className = 'scan-status loading';
+        scanResult.classList.remove('active');
         
         try {
-            // Sadece tarama alanını kırp
             const videoWidth = ocrVideo.videoWidth || 640;
             const videoHeight = ocrVideo.videoHeight || 480;
             
-            const croppedCanvas = cropToScanArea(null, videoWidth, videoHeight);
+            const croppedCanvas = cropToScanArea(videoWidth, videoHeight);
             const imageData = croppedCanvas.toDataURL('image/jpeg', 0.95);
             
-            ocrStatus.innerHTML = '<span class="loading-spinner"></span> OCR işlemi devam ediyor...';
+            scanStatus.innerHTML = '<span class="loading-spinner"></span> OCR işlemi devam ediyor...';
             
             const result = await Tesseract.recognize(
                 imageData,
@@ -1009,7 +1161,7 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
                 {
                     logger: (m) => {
                         if (m.status === 'recognizing text') {
-                            ocrStatus.innerHTML = `<span class="loading-spinner"></span> Okunuyor: ${Math.round(m.progress * 100)}%`;
+                            scanStatus.innerHTML = `<span class="loading-spinner"></span> Okunuyor: ${Math.round(m.progress * 100)}%`;
                         }
                     }
                 }
@@ -1018,59 +1170,76 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
             const text = result.data.text.trim();
             
             if (text && text.length > 0) {
-                lastOcrResult = text;
-                ocrResultText.textContent = text;
-                ocrResult.classList.add('active');
-                ocrStatus.textContent = '✅ OCR başarıyla tamamlandı!';
-                ocrStatus.className = 'ocr-status success';
+                // Sadece alfanumerik karakterleri ve tireleri al
+                const cleanText = text.replace(/[^a-zA-Z0-9\-]/g, ' ').trim();
+                
+                if (cleanText.length > 0) {
+                    lastScanResult = cleanText;
+                    scanResultText.textContent = cleanText;
+                    scanResultEdit.value = cleanText;
+                    scanResult.classList.add('active');
+                    scanStatus.textContent = '✅ OCR başarıyla tamamlandı! Lütfen kontrol edin.';
+                    scanStatus.className = 'scan-status success';
+                } else {
+                    scanStatus.textContent = '❌ Geçerli metin okunamadı. Lütfen tekrar deneyin.';
+                    scanStatus.className = 'scan-status error';
+                }
             } else {
-                ocrStatus.textContent = '❌ Metin okunamadı. Lütfen tekrar deneyin.';
-                ocrStatus.className = 'ocr-status error';
-                ocrResult.classList.remove('active');
+                scanStatus.textContent = '❌ Metin okunamadı. Lütfen tekrar deneyin.';
+                scanStatus.className = 'scan-status error';
             }
             
         } catch (err) {
             console.error('OCR hatası:', err);
-            ocrStatus.textContent = '❌ OCR hatası: ' + err.message;
-            ocrStatus.className = 'ocr-status error';
+            scanStatus.textContent = '❌ OCR hatası: ' + err.message;
+            scanStatus.className = 'scan-status error';
         }
         
         isProcessing = false;
-        ocrCaptureBtn.disabled = false;
+        scanCaptureBtn.disabled = false;
     }
 
-    function useOCRResult() {
-        if (lastOcrResult) {
-            seriInput.value = lastOcrResult;
+    // ============================================
+    // SCAN MODAL KONTROLLERİ
+    // ============================================
+    function openScanModal() {
+        scanModal.classList.add('active');
+        scanResult.classList.remove('active');
+        scanStatus.textContent = '📱 QR kodu veya seri numarasını gösterin...';
+        scanStatus.className = 'scan-status';
+        scanCaptureBtn.disabled = false;
+        lastScanResult = '';
+        currentMethod = 'qr';
+        
+        methodQR.classList.add('active');
+        methodOCR.classList.remove('active');
+        
+        startQRScanner();
+    }
+
+    function closeScanModal() {
+        stopQRScanner();
+        stopOCRCamera();
+        scanModal.classList.remove('active');
+        scanResult.classList.remove('active');
+        scanStatus.textContent = '📱 QR kodu veya seri numarasını gösterin...';
+        scanStatus.className = 'scan-status';
+        scanCaptureBtn.disabled = false;
+        isProcessing = false;
+        qrReader.style.display = 'block';
+        ocrCameraWrapper.classList.remove('active');
+        scanCaptureBtn.style.display = 'none';
+    }
+
+    function useScanResult() {
+        const val = scanResultEdit.value.trim();
+        if (val) {
+            seriInput.value = val;
             seriEkle();
-            closeOCRModal();
+            closeScanModal();
+        } else {
+            alert('Lütfen geçerli bir seri numarası girin.');
         }
-    }
-
-    function openOCRModal() {
-        ocrModal.classList.add('active');
-        ocrResult.classList.remove('active');
-        ocrStatus.textContent = '📱 Kameraya erişim sağlanıyor...';
-        ocrStatus.className = 'ocr-status';
-        ocrCaptureBtn.disabled = false;
-        lastOcrResult = '';
-        
-        startCamera().then(success => {
-            if (success) {
-                ocrStatus.textContent = '📷 Seri numarasını dikdörtgen alana getirin ve "Fotoğraf Çek" butonuna tıklayın.';
-                ocrStatus.className = 'ocr-status';
-            }
-        });
-    }
-
-    function closeOCRModal() {
-        stopCamera();
-        ocrModal.classList.remove('active');
-        ocrResult.classList.remove('active');
-        ocrStatus.textContent = '📱 Kamerayı başlatmak için izin verin...';
-        ocrStatus.className = 'ocr-status';
-        ocrCaptureBtn.disabled = false;
-        isProcessing = false;
     }
 
     // ============================================
@@ -1117,7 +1286,7 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
     function seriEkle() {
         const val = seriInput.value.trim();
         if (val === '') {
-            alert('Lütfen bir seri numarası girin veya OCR ile okuyun.');
+            alert('Lütfen bir seri numarası girin veya QR/OCR ile okuyun.');
             seriInput.focus();
             return;
         }
@@ -1422,24 +1591,47 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
         verileriYukle();
     });
 
-    // OCR Olayları
-    ocrScanBtn.addEventListener('click', openOCRModal);
-    ocrCloseBtn.addEventListener('click', closeOCRModal);
-    ocrCloseCameraBtn.addEventListener('click', closeOCRModal);
-    ocrCaptureBtn.addEventListener('click', performOCR);
-    ocrUseBtn.addEventListener('click', useOCRResult);
-    ocrRetryBtn.addEventListener('click', function() {
-        ocrResult.classList.remove('active');
-        ocrStatus.textContent = '📷 Yeni fotoğraf çekmek için "Fotoğraf Çek" butonuna tıklayın.';
-        ocrStatus.className = 'ocr-status';
-        lastOcrResult = '';
+    // Scan Butonları
+    scanBtn.addEventListener('click', openScanModal);
+    scanCloseBtn.addEventListener('click', closeScanModal);
+    scanCloseCameraBtn.addEventListener('click', closeScanModal);
+    scanUseBtn.addEventListener('click', useScanResult);
+    scanRetryBtn.addEventListener('click', function() {
+        scanResult.classList.remove('active');
+        scanStatus.textContent = '📷 Yeniden deneyin...';
+        scanStatus.className = 'scan-status';
+        lastScanResult = '';
+    });
+    scanCaptureBtn.addEventListener('click', performOCR);
+    
+    // Modal kapatma (dışarı tıklama)
+    scanModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeScanModal();
+        }
     });
 
-    // Modal kapatma (dışarı tıklama)
-    ocrModal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeOCRModal();
-        }
+    // Yöntem Değiştirme
+    methodQR.addEventListener('click', function() {
+        if (currentMethod === 'qr') return;
+        currentMethod = 'qr';
+        methodQR.classList.add('active');
+        methodOCR.classList.remove('active');
+        stopOCRCamera();
+        startQRScanner();
+        scanStatus.textContent = '📷 QR kodu kameraya gösterin...';
+        scanStatus.className = 'scan-status';
+        scanResult.classList.remove('active');
+    });
+
+    methodOCR.addEventListener('click', function() {
+        if (currentMethod === 'ocr') return;
+        currentMethod = 'ocr';
+        methodOCR.classList.add('active');
+        methodQR.classList.remove('active');
+        stopQRScanner();
+        startOCRCamera();
+        scanResult.classList.remove('active');
     });
 
     // ============================================
@@ -1451,45 +1643,7 @@ Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu y
 
     console.log('✅ Firebase Sipariş Takip Sistemi Başlatıldı!');
     console.log('📊 Veritabanı: mkrurun');
-    console.log('📸 OCR özelliği aktif - IBAN mantığı ile çalışıyor!');
+    console.log('📸 QR/OCR özelliği aktif!');
 </script>
 </body>
 </html>
-```
-
-🎯 IBAN Mantığı - Yatay Dikdörtgen Özellikleri:
-
-1. Görsel Tasarım
-
-· Yatay dikdörtgen tarama alanı (geniş %85, yükseklik %28)
-· Yeşil çerçeve ile vurgulanmış
-· Köşelerde L şeklinde işaretçiler
-· Hareketli tarama çizgisi
-
-2. Akıllı Kırpma
-
-· Sadece dikdörtgen alan içindeki metin okunur
-· Dışındaki alanlar OCR'ye gönderilmez
-· Daha hızlı ve doğru sonuç
-
-3. Kullanıcı Rehberliği
-
-· "Seri numarasını bu alana getirin" yazısı
-· Animasyonlu çerçeve
-· Tarama çizgisi hareketi
-
-4. Kullanım Adımları
-
-1. 📷 OCR butonuna tıklayın
-2. Seri numarasını dikdörtgen alana getirin
-3. "Fotoğraf Çek" butonuna tıklayın
-4. Otomatik okuma başlasın
-5. Sonucu kontrol edip "Kullan" butonuna tıklayın
-
-📱 Mobil Uyum
-
-· Tam responsive tasarım
-· Telefon kamerası ile çalışır
-· Dokunmatik dostu butonlar
-
-Artık IBAN okur gibi, yatay dikdörtgen alan ile seri numaralarını okuyabilirsiniz! 📸
