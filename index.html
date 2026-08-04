@@ -1,10 +1,4 @@
-Anladım, OCR (Optik Karakter Tanıma) ile kamera görüntüsünden seri numaralarını otomatik okumak istiyorsunuz. Yani seri numarasının fotoğrafını çekip metne çevirecek.
-
-📸 OCR ile Seri Numarası Okuma
-
-Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf çekip, içindeki metni (seri numarasını) otomatik olarak okuyacak.
-
-İşte OCR özellikli güncellenmiş kod:
+Anladım, IBAN mantığında gibi yatay, dikdörtgen şeklinde bir OCR okuyucu yapacağım. Yani kamera açıldığında ortada dikdörtgen bir alan olacak, sadece o alandaki metni okuyacak.
 
 ```html
 <!DOCTYPE html>
@@ -369,7 +363,7 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
             background: #fee2e2;
         }
         
-        /* OCR MODAL */
+        /* OCR MODAL - IBAN MANTIĞI */
         .ocr-modal {
             display: none;
             position: fixed;
@@ -377,7 +371,7 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             z-index: 2000;
             justify-content: center;
             align-items: center;
@@ -386,49 +380,148 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
             display: flex;
         }
         .ocr-modal-content {
-            background: white;
-            padding: 25px;
+            background: #1a1a2e;
+            padding: 20px;
             border-radius: 20px;
-            max-width: 550px;
+            max-width: 480px;
             width: 95%;
-            max-height: 95vh;
-            overflow-y: auto;
+            position: relative;
         }
-        .ocr-modal-content h3 {
-            margin-top: 0;
-            color: #1e2a47;
+        .ocr-modal-content .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 12px;
+            color: white;
+        }
+        .ocr-modal-content .header h3 {
+            margin: 0;
+            color: white;
+            font-size: 1rem;
         }
         .ocr-modal-content .close-btn {
             background: none;
             border: none;
             font-size: 1.5rem;
             cursor: pointer;
-            color: #6c7a92;
+            color: #9ca3af;
         }
         .ocr-modal-content .close-btn:hover {
             color: #dc3545;
         }
-        .ocr-camera-container {
+        
+        .ocr-camera-wrapper {
             position: relative;
             width: 100%;
-            max-width: 480px;
-            margin: 0 auto;
-            background: #000;
             border-radius: 12px;
             overflow: hidden;
+            background: #000;
+            aspect-ratio: 4/3;
         }
         #ocr-video {
             width: 100%;
+            height: 100%;
             display: block;
-            border-radius: 12px;
-            background: #1a1a2e;
+            object-fit: cover;
         }
         #ocr-canvas {
             display: none;
         }
+        
+        /* IBAN MANTIĞI - YATAY DİKDÖRTGEN TARAMA ALANI */
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .scan-overlay .scan-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            height: 28%;
+            border: 3px solid rgba(0, 255, 100, 0.8);
+            border-radius: 12px;
+            background: rgba(0, 255, 100, 0.08);
+            box-shadow: 0 0 30px rgba(0, 255, 100, 0.15);
+            animation: pulse-border 2s ease-in-out infinite;
+        }
+        .scan-overlay .scan-area .corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: #00ff64;
+            border-style: solid;
+            border-width: 0;
+        }
+        .scan-overlay .scan-area .corner.tl {
+            top: -2px;
+            left: -2px;
+            border-top-width: 4px;
+            border-left-width: 4px;
+            border-radius: 4px 0 0 0;
+        }
+        .scan-overlay .scan-area .corner.tr {
+            top: -2px;
+            right: -2px;
+            border-top-width: 4px;
+            border-right-width: 4px;
+            border-radius: 0 4px 0 0;
+        }
+        .scan-overlay .scan-area .corner.bl {
+            bottom: -2px;
+            left: -2px;
+            border-bottom-width: 4px;
+            border-left-width: 4px;
+            border-radius: 0 0 0 4px;
+        }
+        .scan-overlay .scan-area .corner.br {
+            bottom: -2px;
+            right: -2px;
+            border-bottom-width: 4px;
+            border-right-width: 4px;
+            border-radius: 0 0 4px 0;
+        }
+        .scan-overlay .scan-line {
+            position: absolute;
+            top: 50%;
+            left: 5%;
+            width: 90%;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #00ff64, transparent);
+            transform: translateY(-50%);
+            animation: scan-move 2.5s ease-in-out infinite;
+            opacity: 0.6;
+        }
+        
+        .scan-overlay .scan-label {
+            position: absolute;
+            bottom: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.7);
+            font-size: 0.75rem;
+            text-align: center;
+            background: rgba(0,0,0,0.6);
+            padding: 6px 16px;
+            border-radius: 30px;
+            white-space: nowrap;
+            letter-spacing: 0.5px;
+        }
+        
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(0, 255, 100, 0.8); box-shadow: 0 0 30px rgba(0, 255, 100, 0.15); }
+            50% { border-color: rgba(0, 255, 100, 0.4); box-shadow: 0 0 15px rgba(0, 255, 100, 0.05); }
+        }
+        @keyframes scan-move {
+            0%, 100% { top: 20%; opacity: 0.3; }
+            50% { top: 80%; opacity: 0.8; }
+        }
+        
         .ocr-controls {
             display: flex;
             gap: 10px;
@@ -437,7 +530,7 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
             flex-wrap: wrap;
         }
         .ocr-controls button {
-            padding: 12px 24px;
+            padding: 12px 28px;
             border: none;
             border-radius: 30px;
             font-weight: 600;
@@ -446,15 +539,19 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
             font-size: 0.95rem;
         }
         .ocr-controls .btn-capture {
-            background: #28a745;
-            color: white;
+            background: #00ff64;
+            color: #1a1a2e;
+            flex: 1;
+            min-width: 120px;
         }
         .ocr-controls .btn-capture:hover {
-            background: #1e7e34;
+            background: #00e05a;
+            transform: scale(1.02);
         }
         .ocr-controls .btn-capture:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
         .ocr-controls .btn-close-camera {
             background: #dc3545;
@@ -463,25 +560,72 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
         .ocr-controls .btn-close-camera:hover {
             background: #b02a37;
         }
+        
+        .ocr-status {
+            text-align: center;
+            padding: 8px 12px;
+            margin-top: 10px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            color: #9ca3af;
+            background: rgba(255,255,255,0.05);
+        }
+        .ocr-status.loading {
+            background: rgba(254, 243, 199, 0.15);
+            color: #fcd34d;
+        }
+        .ocr-status.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+        }
+        .ocr-status.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top: 2px solid #00ff64;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         .ocr-result {
-            margin-top: 15px;
-            padding: 15px;
-            background: #f3f4f6;
+            margin-top: 12px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.08);
             border-radius: 12px;
             display: none;
+            border: 1px solid rgba(0, 255, 100, 0.2);
         }
         .ocr-result.active {
             display: block;
         }
+        .ocr-result .result-label {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
         .ocr-result .result-text {
             font-size: 1.1rem;
             font-weight: 600;
-            color: #1e2a47;
+            color: white;
             word-break: break-all;
-            background: white;
-            padding: 10px;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
             border-radius: 8px;
-            border: 2px solid #dbeafe;
+            font-family: 'Courier New', monospace;
         }
         .ocr-result .result-actions {
             display: flex;
@@ -489,62 +633,28 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
             margin-top: 10px;
         }
         .ocr-result .result-actions button {
-            padding: 8px 16px;
+            padding: 8px 20px;
             border: none;
             border-radius: 30px;
             font-weight: 600;
             cursor: pointer;
             transition: 0.2s;
+            font-size: 0.85rem;
         }
         .ocr-result .result-actions .btn-use {
-            background: #28a745;
-            color: white;
+            background: #00ff64;
+            color: #1a1a2e;
+            flex: 1;
         }
         .ocr-result .result-actions .btn-use:hover {
-            background: #1e7e34;
+            background: #00e05a;
         }
         .ocr-result .result-actions .btn-retry {
-            background: #ffc107;
-            color: #1e2a47;
+            background: rgba(255,255,255,0.1);
+            color: white;
         }
         .ocr-result .result-actions .btn-retry:hover {
-            background: #e0a800;
-        }
-        .ocr-status {
-            text-align: center;
-            padding: 8px;
-            margin-top: 8px;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            color: #6c7a92;
-        }
-        .ocr-status.loading {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        .ocr-status.success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        .ocr-status.error {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #8b5cf6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 8px;
-            vertical-align: middle;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            background: rgba(255,255,255,0.2);
         }
         
         #editIndex {
@@ -569,7 +679,14 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
                 max-width: 150px;
             }
             .ocr-modal-content {
-                padding: 15px;
+                padding: 12px;
+            }
+            .scan-overlay .scan-area {
+                height: 22%;
+            }
+            .ocr-controls button {
+                padding: 10px 20px;
+                font-size: 0.85rem;
             }
         }
     </style>
@@ -677,31 +794,43 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
     </div>
 </div>
 
-<!-- OCR MODAL -->
+<!-- OCR MODAL - IBAN MANTIĞI -->
 <div class="ocr-modal" id="ocrModal">
     <div class="ocr-modal-content">
-        <h3>
-            📷 Seri Numarasını OCR ile Oku
+        <div class="header">
+            <h3>📷 Seri Numarasını Oku</h3>
             <button class="close-btn" id="ocrCloseBtn">&times;</button>
-        </h3>
+        </div>
         
-        <div class="ocr-camera-container">
+        <div class="ocr-camera-wrapper">
             <video id="ocr-video" autoplay playsinline></video>
             <canvas id="ocr-canvas"></canvas>
+            
+            <!-- YATAY DİKDÖRTGEN TARAMA ALANI - IBAN MANTIĞI -->
+            <div class="scan-overlay">
+                <div class="scan-area">
+                    <span class="corner tl"></span>
+                    <span class="corner tr"></span>
+                    <span class="corner bl"></span>
+                    <span class="corner br"></span>
+                </div>
+                <div class="scan-line"></div>
+                <div class="scan-label">📌 Seri numarasını bu alana getirin</div>
+            </div>
         </div>
         
         <div class="ocr-status" id="ocrStatus">📱 Kamerayı başlatmak için izin verin...</div>
         
         <div class="ocr-controls">
-            <button class="btn-capture" id="ocrCaptureBtn">📸 Fotoğraf Çek ve Oku</button>
+            <button class="btn-capture" id="ocrCaptureBtn">📸 Fotoğraf Çek</button>
             <button class="btn-close-camera" id="ocrCloseCameraBtn">❌ Kapat</button>
         </div>
         
         <div class="ocr-result" id="ocrResult">
-            <div style="font-weight:600; margin-bottom:5px;">📝 Okunan Metin:</div>
+            <div class="result-label">📝 OKUNAN METİN</div>
             <div class="result-text" id="ocrResultText"></div>
             <div class="result-actions">
-                <button class="btn-use" id="ocrUseBtn">✅ Kullan</button>
+                <button class="btn-use" id="ocrUseBtn">✅ Kullan ve Ekle</button>
                 <button class="btn-retry" id="ocrRetryBtn">🔄 Tekrar Dene</button>
             </div>
         </div>
@@ -804,7 +933,7 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
     }
 
     // ============================================
-    // OCR FONKSİYONLARI
+    // OCR FONKSİYONLARI - IBAN MANTIĞI
     // ============================================
     async function startCamera() {
         try {
@@ -836,27 +965,42 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
         ocrVideo.pause();
     }
 
+    // Sadece dikdörtgen alanı kırp
+    function cropToScanArea(imageData, width, height) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Dikdörtgen alanı hesapla (ortada, genişlik %85, yükseklik %28)
+        const cropWidth = width * 0.85;
+        const cropHeight = height * 0.28;
+        const cropX = (width - cropWidth) / 2;
+        const cropY = (height - cropHeight) / 2;
+        
+        canvas.width = cropWidth;
+        canvas.height = cropHeight;
+        
+        ctx.drawImage(ocrVideo, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+        
+        return canvas;
+    }
+
     async function performOCR() {
         if (isProcessing) return;
         isProcessing = true;
         ocrCaptureBtn.disabled = true;
         
-        ocrStatus.textContent = '⏳ Fotoğraf işleniyor...';
+        ocrStatus.innerHTML = '<span class="loading-spinner"></span> Fotoğraf işleniyor...';
         ocrStatus.className = 'ocr-status loading';
         ocrResult.classList.remove('active');
         
         try {
-            // Videodan frame yakala
-            const canvas = ocrCanvas;
-            const context = canvas.getContext('2d');
-            canvas.width = ocrVideo.videoWidth || 640;
-            canvas.height = ocrVideo.videoHeight || 480;
-            context.drawImage(ocrVideo, 0, 0, canvas.width, canvas.height);
+            // Sadece tarama alanını kırp
+            const videoWidth = ocrVideo.videoWidth || 640;
+            const videoHeight = ocrVideo.videoHeight || 480;
             
-            // Görüntüyü veri URL'ye çevir
-            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+            const croppedCanvas = cropToScanArea(null, videoWidth, videoHeight);
+            const imageData = croppedCanvas.toDataURL('image/jpeg', 0.95);
             
-            // Tesseract ile OCR işlemi
             ocrStatus.innerHTML = '<span class="loading-spinner"></span> OCR işlemi devam ediyor...';
             
             const result = await Tesseract.recognize(
@@ -913,7 +1057,7 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
         
         startCamera().then(success => {
             if (success) {
-                ocrStatus.textContent = '📷 Seri numarasını kameraya gösterin ve "Fotoğraf Çek" butonuna tıklayın.';
+                ocrStatus.textContent = '📷 Seri numarasını dikdörtgen alana getirin ve "Fotoğraf Çek" butonuna tıklayın.';
                 ocrStatus.className = 'ocr-status';
             }
         });
@@ -1307,45 +1451,45 @@ Bunun için Tesseract.js kütüphanesini kullanacağız. Kamera ile fotoğraf ç
 
     console.log('✅ Firebase Sipariş Takip Sistemi Başlatıldı!');
     console.log('📊 Veritabanı: mkrurun');
-    console.log('📸 OCR özelliği aktif!');
+    console.log('📸 OCR özelliği aktif - IBAN mantığı ile çalışıyor!');
 </script>
 </body>
 </html>
 ```
 
-🎯 OCR Özelliği Nasıl Çalışır:
+🎯 IBAN Mantığı - Yatay Dikdörtgen Özellikleri:
 
-1. Kamera ile Fotoğraf Çekme
+1. Görsel Tasarım
 
-· "📷 OCR ile Oku" butonuna tıklayın
-· Kamera açılır, seri numarasını ekrana getirin
-· "Fotoğraf Çek ve Oku" butonuna tıklayın
+· Yatay dikdörtgen tarama alanı (geniş %85, yükseklik %28)
+· Yeşil çerçeve ile vurgulanmış
+· Köşelerde L şeklinde işaretçiler
+· Hareketli tarama çizgisi
 
-2. Otomatik Metin Tanıma
+2. Akıllı Kırpma
 
-· Fotoğraf çekilir ve Tesseract.js ile işlenir
-· Türkçe dil desteği ile metin okunur
-· İlerleme yüzdesi gösterilir
+· Sadece dikdörtgen alan içindeki metin okunur
+· Dışındaki alanlar OCR'ye gönderilmez
+· Daha hızlı ve doğru sonuç
 
-3. Sonucu Kullanma
+3. Kullanıcı Rehberliği
 
-· Okunan metin ekranda gösterilir
-· "Kullan" butonu ile seri input'una eklenir
-· Otomatik olarak seri listesine eklenir
+· "Seri numarasını bu alana getirin" yazısı
+· Animasyonlu çerçeve
+· Tarama çizgisi hareketi
 
-📱 Kullanım Adımları:
+4. Kullanım Adımları
 
-1. Seri numarasının fotoğrafını çekin
-2. OCR otomatik olarak metni okusun
-3. Okunan metni kontrol edin
-4. "Kullan" butonuna tıklayın
-5. Seri otomatik olarak listeye eklenir
+1. 📷 OCR butonuna tıklayın
+2. Seri numarasını dikdörtgen alana getirin
+3. "Fotoğraf Çek" butonuna tıklayın
+4. Otomatik okuma başlasın
+5. Sonucu kontrol edip "Kullan" butonuna tıklayın
 
-⚡ Avantajlar:
+📱 Mobil Uyum
 
-· Hızlı giriş: El ile yazmaya gerek yok
-· Düşük hata: OCR doğru okur
-· Türkçe destek: Türkçe karakterleri tanır
-· Mobil uyumlu: Telefon kamerası ile çalışır
+· Tam responsive tasarım
+· Telefon kamerası ile çalışır
+· Dokunmatik dostu butonlar
 
-Artık seri numaralarını fotoğraf çekerek ekleyebilirsiniz! 📸
+Artık IBAN okur gibi, yatay dikdörtgen alan ile seri numaralarını okuyabilirsiniz! 📸
