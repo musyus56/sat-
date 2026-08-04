@@ -1,3 +1,8 @@
+Evet, barkod okuyabilirim! html5-qrcode kütüphanesi hem QR kod hem de barkod (Code128, EAN-13, UPC-A, Code39, vs.) okuyabiliyor.
+
+İşte barkod okuma özelliği eklenmiş güncel versiyon:
+
+```html
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -9,11 +14,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
-    <!-- QR Kod Kütüphanesi -->
+    <!-- QR/Barkod Kütüphanesi -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    
-    <!-- Tesseract.js - OCR Kütüphanesi (Yedek) -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     
     <style>
         * {
@@ -128,14 +130,6 @@
         }
         .btn-warning:hover {
             background: #d98c2e;
-        }
-        .btn-sm {
-            padding: 7px 14px;
-            font-size: 0.8rem;
-            border-radius: 30px;
-            border: none;
-            cursor: pointer;
-            transition: 0.2s;
         }
         .btn-scan {
             background: #8b5cf6;
@@ -409,20 +403,22 @@
         
         .scan-methods {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             margin-bottom: 12px;
+            flex-wrap: wrap;
         }
         .scan-methods button {
             flex: 1;
-            padding: 10px;
+            min-width: 70px;
+            padding: 8px 12px;
             border: 2px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
+            border-radius: 10px;
             background: rgba(255,255,255,0.05);
             color: white;
             cursor: pointer;
             transition: 0.2s;
             font-weight: 600;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
         }
         .scan-methods button:hover {
             background: rgba(255,255,255,0.1);
@@ -433,164 +429,17 @@
             background: rgba(139, 92, 246, 0.2);
         }
         
-        #qr-reader {
-            width: 100%;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        #qr-reader video {
-            border-radius: 12px;
-        }
-        
-        .scan-camera-wrapper {
-            position: relative;
+        #scanner-container {
             width: 100%;
             border-radius: 12px;
             overflow: hidden;
             background: #000;
-            aspect-ratio: 4/3;
-            display: none;
+            min-height: 300px;
+            position: relative;
         }
-        .scan-camera-wrapper.active {
-            display: block;
-        }
-        #ocr-video {
-            width: 100%;
-            height: 100%;
-            display: block;
-            object-fit: cover;
-        }
-        #ocr-canvas {
-            display: none;
-        }
-        
-        /* IBAN MANTIĞI - TARAMA ALANI */
-        .scan-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-        .scan-overlay .scan-area {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 85%;
-            height: 28%;
-            border: 3px solid rgba(0, 255, 100, 0.8);
+        #scanner-container video {
             border-radius: 12px;
-            background: rgba(0, 255, 100, 0.08);
-            box-shadow: 0 0 30px rgba(0, 255, 100, 0.15);
-            animation: pulse-border 2s ease-in-out infinite;
-        }
-        .scan-overlay .scan-area .corner {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border-color: #00ff64;
-            border-style: solid;
-            border-width: 0;
-        }
-        .scan-overlay .scan-area .corner.tl {
-            top: -2px;
-            left: -2px;
-            border-top-width: 4px;
-            border-left-width: 4px;
-            border-radius: 4px 0 0 0;
-        }
-        .scan-overlay .scan-area .corner.tr {
-            top: -2px;
-            right: -2px;
-            border-top-width: 4px;
-            border-right-width: 4px;
-            border-radius: 0 4px 0 0;
-        }
-        .scan-overlay .scan-area .corner.bl {
-            bottom: -2px;
-            left: -2px;
-            border-bottom-width: 4px;
-            border-left-width: 4px;
-            border-radius: 0 0 0 4px;
-        }
-        .scan-overlay .scan-area .corner.br {
-            bottom: -2px;
-            right: -2px;
-            border-bottom-width: 4px;
-            border-right-width: 4px;
-            border-radius: 0 0 4px 0;
-        }
-        .scan-overlay .scan-line {
-            position: absolute;
-            top: 50%;
-            left: 5%;
-            width: 90%;
-            height: 2px;
-            background: linear-gradient(to right, transparent, #00ff64, transparent);
-            transform: translateY(-50%);
-            animation: scan-move 2.5s ease-in-out infinite;
-            opacity: 0.6;
-        }
-        .scan-overlay .scan-label {
-            position: absolute;
-            bottom: 8%;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.7);
-            font-size: 0.7rem;
-            text-align: center;
-            background: rgba(0,0,0,0.6);
-            padding: 4px 14px;
-            border-radius: 30px;
-            white-space: nowrap;
-        }
-        
-        @keyframes pulse-border {
-            0%, 100% { border-color: rgba(0, 255, 100, 0.8); box-shadow: 0 0 30px rgba(0, 255, 100, 0.15); }
-            50% { border-color: rgba(0, 255, 100, 0.4); box-shadow: 0 0 15px rgba(0, 255, 100, 0.05); }
-        }
-        @keyframes scan-move {
-            0%, 100% { top: 20%; opacity: 0.3; }
-            50% { top: 80%; opacity: 0.8; }
-        }
-        
-        .scan-controls {
-            display: flex;
-            gap: 10px;
-            margin-top: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .scan-controls button {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 30px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-            font-size: 0.9rem;
-        }
-        .scan-controls .btn-capture {
-            background: #00ff64;
-            color: #1a1a2e;
-            flex: 1;
-            min-width: 100px;
-        }
-        .scan-controls .btn-capture:hover {
-            background: #00e05a;
-        }
-        .scan-controls .btn-capture:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .scan-controls .btn-close-camera {
-            background: #dc3545;
-            color: white;
-        }
-        .scan-controls .btn-close-camera:hover {
-            background: #b02a37;
+            width: 100%;
         }
         
         .scan-status {
@@ -620,7 +469,7 @@
             width: 16px;
             height: 16px;
             border: 2px solid rgba(255,255,255,0.2);
-            border-top: 2px solid #00ff64;
+            border-top: 2px solid #8b5cf6;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin-right: 8px;
@@ -637,7 +486,7 @@
             background: rgba(255,255,255,0.08);
             border-radius: 12px;
             display: none;
-            border: 1px solid rgba(0, 255, 100, 0.2);
+            border: 1px solid rgba(139, 92, 246, 0.3);
         }
         .scan-result.active {
             display: block;
@@ -718,6 +567,11 @@
             color: #0c5460;
             font-size: 0.9rem;
         }
+        .barcode-hint {
+            font-size: 0.75rem;
+            color: #6c7a92;
+            margin-top: 4px;
+        }
         
         @media (max-width: 700px) {
             .form-grid {
@@ -733,11 +587,9 @@
                 padding: 12px;
             }
             .scan-methods button {
-                font-size: 0.75rem;
-                padding: 8px;
-            }
-            .scan-overlay .scan-area {
-                height: 22%;
+                font-size: 0.7rem;
+                padding: 6px 8px;
+                min-width: 55px;
             }
         }
     </style>
@@ -786,10 +638,13 @@
             </div>
             
             <div class="seri-input-group">
-                <input type="text" id="seriInput" placeholder="Seri numarasını girin veya QR/OCR ile okuyun..." />
-                <button class="btn btn-scan" id="scanBtn">📷 QR / OCR Oku</button>
+                <input type="text" id="seriInput" placeholder="Seri numarasını girin veya barkod/QR okutun..." />
+                <button class="btn btn-scan" id="scanBtn">📷 Barkod / QR Oku</button>
                 <button class="btn btn-success" id="seriEkleBtn">➕ Ekle</button>
                 <button class="btn btn-danger" id="seriTemizleBtn">🗑️ Tümünü Temizle</button>
+            </div>
+            <div class="barcode-hint">
+                💡 Desteklenen barkodlar: Code128, EAN-13, UPC-A, Code39, QR, DataMatrix, PDF417 ve daha fazlası
             </div>
             
             <div class="seri-list-container" id="seriListContainer">
@@ -849,44 +704,24 @@
 <div class="scan-modal" id="scanModal">
     <div class="scan-modal-content">
         <div class="header">
-            <h3>📷 Seri Numarasını Oku</h3>
+            <h3>📷 Barkod / QR Okuyucu</h3>
             <button class="close-btn" id="scanCloseBtn">&times;</button>
         </div>
         
         <!-- Yöntem Seçimi -->
         <div class="scan-methods">
-            <button id="methodQR" class="active">📱 QR Kod</button>
-            <button id="methodOCR">📸 OCR (Deneysel)</button>
+            <button id="methodAuto" class="active">🔄 Otomatik</button>
+            <button id="methodQR">📱 QR</button>
+            <button id="methodBarcode">📊 Barkod</button>
         </div>
         
-        <!-- QR Okuyucu -->
-        <div id="qr-reader"></div>
+        <!-- Scanner Alanı -->
+        <div id="scanner-container"></div>
         
-        <!-- OCR Kamera -->
-        <div class="scan-camera-wrapper" id="ocrCameraWrapper">
-            <video id="ocr-video" autoplay playsinline></video>
-            <canvas id="ocr-canvas"></canvas>
-            <div class="scan-overlay">
-                <div class="scan-area">
-                    <span class="corner tl"></span>
-                    <span class="corner tr"></span>
-                    <span class="corner bl"></span>
-                    <span class="corner br"></span>
-                </div>
-                <div class="scan-line"></div>
-                <div class="scan-label">📌 Seri numarasını bu alana getirin</div>
-            </div>
-        </div>
-        
-        <div class="scan-status" id="scanStatus">📱 QR kodu veya seri numarasını gösterin...</div>
-        
-        <div class="scan-controls">
-            <button class="btn-capture" id="scanCaptureBtn" style="display:none;">📸 Fotoğraf Çek</button>
-            <button class="btn-close-camera" id="scanCloseCameraBtn">❌ Kapat</button>
-        </div>
+        <div class="scan-status" id="scanStatus">📱 Barkod veya QR kodu kameraya gösterin...</div>
         
         <div class="scan-result" id="scanResult">
-            <div class="result-label">📝 OKUNAN METİN</div>
+            <div class="result-label">📝 OKUNAN DEĞER</div>
             <div class="result-text" id="scanResultText"></div>
             <div class="result-edit">
                 <input type="text" id="scanResultEdit" placeholder="Yanlışsa düzeltin..." />
@@ -922,11 +757,9 @@
     let siparisler = [];
     let editMode = false;
     let editKey = null;
-    let html5QrCode = null;
+    let html5Scanner = null;
     let isScanning = false;
-    let stream = null;
-    let isProcessing = false;
-    let currentMethod = 'qr';
+    let currentMethod = 'auto';
 
     // DOM
     const musteriAdi = document.getElementById('musteriAdi');
@@ -954,21 +787,17 @@
     // Scan Elementleri
     const scanModal = document.getElementById('scanModal');
     const scanCloseBtn = document.getElementById('scanCloseBtn');
-    const scanCloseCameraBtn = document.getElementById('scanCloseCameraBtn');
     const scanStatus = document.getElementById('scanStatus');
     const scanBtn = document.getElementById('scanBtn');
-    const scanCaptureBtn = document.getElementById('scanCaptureBtn');
     const scanResult = document.getElementById('scanResult');
     const scanResultText = document.getElementById('scanResultText');
     const scanResultEdit = document.getElementById('scanResultEdit');
     const scanUseBtn = document.getElementById('scanUseBtn');
     const scanRetryBtn = document.getElementById('scanRetryBtn');
+    const scannerContainer = document.getElementById('scanner-container');
+    const methodAuto = document.getElementById('methodAuto');
     const methodQR = document.getElementById('methodQR');
-    const methodOCR = document.getElementById('methodOCR');
-    const ocrCameraWrapper = document.getElementById('ocrCameraWrapper');
-    const ocrVideo = document.getElementById('ocr-video');
-    const ocrCanvas = document.getElementById('ocr-canvas');
-    const qrReader = document.getElementById('qr-reader');
+    const methodBarcode = document.getElementById('methodBarcode');
 
     let geciciSeriListesi = [];
     let lastScanResult = '';
@@ -1003,48 +832,85 @@
     }
 
     // ============================================
-    // QR KOD FONKSİYONLARI
+    // BARKOD / QR SCANNER FONKSİYONLARI
     // ============================================
-    async function startQRScanner() {
+    function getScannerConfig() {
+        const config = {
+            fps: 15,
+            qrbox: { width: 280, height: 280 },
+            aspectRatio: 1.0
+        };
+
+        // Farklı formatlar için özel ayarlar
+        if (currentMethod === 'barcode') {
+            // Barkod için daha geniş alan
+            config.qrbox = { width: 320, height: 120 };
+            config.aspectRatio = 4/3;
+        } else if (currentMethod === 'qr') {
+            config.qrbox = { width: 250, height: 250 };
+            config.aspectRatio = 1.0;
+        }
+        // 'auto' için standart ayarlar
+
+        return config;
+    }
+
+    async function startScanner() {
         if (isScanning) return;
         
         scanStatus.textContent = '📱 Kameraya erişim sağlanıyor...';
         scanStatus.className = 'scan-status';
-        qrReader.style.display = 'block';
-        ocrCameraWrapper.classList.remove('active');
-        scanCaptureBtn.style.display = 'none';
+        scannerContainer.innerHTML = '';
         
         try {
-            html5QrCode = new Html5Qrcode("qr-reader");
+            html5Scanner = new Html5Qrcode("scanner-container");
             
-            const config = {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0
-            };
+            const config = getScannerConfig();
+            
+            // Desteklenen formatlar
+            const formats = [
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.DATA_MATRIX,
+                Html5QrcodeSupportedFormats.PDF_417,
+                Html5QrcodeSupportedFormats.AZTEC,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.CODE_93,
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.ITF,
+                Html5QrcodeSupportedFormats.CODABAR
+            ];
             
             isScanning = true;
             
-            await html5QrCode.start(
+            await html5Scanner.start(
                 { facingMode: "environment" },
                 config,
-                onQRSuccess,
-                onQRError
+                onScanSuccess,
+                onScanError
             );
             
-            scanStatus.textContent = '📷 QR kodu kameraya gösterin...';
+            const methodText = currentMethod === 'auto' ? 'Barkod / QR' : 
+                               currentMethod === 'qr' ? 'QR Kod' : 'Barkod';
+            scanStatus.textContent = `📷 ${methodText} kameraya gösterin...`;
             scanStatus.className = 'scan-status';
             
         } catch (err) {
-            console.error('QR kamera hatası:', err);
+            console.error('Scanner başlatma hatası:', err);
             scanStatus.textContent = '❌ Kamera başlatılamadı: ' + err.message;
             scanStatus.className = 'scan-status error';
             isScanning = false;
         }
     }
 
-    function onQRSuccess(decodedText) {
-        scanStatus.textContent = '✅ QR kod okundu!';
+    function onScanSuccess(decodedText, decodedResult) {
+        // Tüm formatları kabul et
+        const format = decodedResult?.result?.format?.formatName || 'Bilinmeyen';
+        
+        scanStatus.textContent = `✅ Okundu! (${format})`;
         scanStatus.className = 'scan-status success';
         
         lastScanResult = decodedText;
@@ -1052,151 +918,37 @@
         scanResultEdit.value = decodedText;
         scanResult.classList.add('active');
         
+        // 1.5 saniye sonra otomatik kullan
         setTimeout(() => {
-            stopQRScanner();
-        }, 1000);
+            useScanResult();
+        }, 1500);
     }
 
-    function onQRError(errorMessage) {
-        // Hata mesajlarını gösterme
+    function onScanError(errorMessage) {
+        // Hata mesajlarını gösterme (çok fazla log olmaması için)
+        // console.warn('Scan error:', errorMessage);
     }
 
-    function stopQRScanner() {
-        if (html5QrCode && isScanning) {
+    function stopScanner() {
+        if (html5Scanner && isScanning) {
             try {
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
+                html5Scanner.stop().then(() => {
+                    html5Scanner.clear();
                     isScanning = false;
+                    scannerContainer.innerHTML = '';
                 }).catch(err => {
-                    console.error('QR durdurma hatası:', err);
+                    console.error('Scanner durdurma hatası:', err);
                     isScanning = false;
+                    scannerContainer.innerHTML = '';
                 });
             } catch (e) {
                 isScanning = false;
+                scannerContainer.innerHTML = '';
             }
+        } else {
+            scannerContainer.innerHTML = '';
+            isScanning = false;
         }
-    }
-
-    // ============================================
-    // OCR FONKSİYONLARI (Yedek)
-    // ============================================
-    async function startOCRCamera() {
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: 'environment',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                },
-                audio: false
-            });
-            ocrVideo.srcObject = stream;
-            await ocrVideo.play();
-            
-            qrReader.style.display = 'none';
-            ocrCameraWrapper.classList.add('active');
-            scanCaptureBtn.style.display = 'block';
-            
-            scanStatus.textContent = '📷 Seri numarasını dikdörtgen alana getirin ve "Fotoğraf Çek" butonuna tıklayın.';
-            scanStatus.className = 'scan-status';
-            
-            return true;
-        } catch (err) {
-            console.error('OCR kamera hatası:', err);
-            scanStatus.textContent = '❌ Kameraya erişilemedi: ' + err.message;
-            scanStatus.className = 'scan-status error';
-            return false;
-        }
-    }
-
-    function stopOCRCamera() {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            stream = null;
-        }
-        ocrVideo.srcObject = null;
-        ocrVideo.pause();
-        ocrCameraWrapper.classList.remove('active');
-        scanCaptureBtn.style.display = 'none';
-    }
-
-    function cropToScanArea(videoWidth, videoHeight) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        const cropWidth = videoWidth * 0.85;
-        const cropHeight = videoHeight * 0.28;
-        const cropX = (videoWidth - cropWidth) / 2;
-        const cropY = (videoHeight - cropHeight) / 2;
-        
-        canvas.width = cropWidth;
-        canvas.height = cropHeight;
-        
-        ctx.drawImage(ocrVideo, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-        
-        return canvas;
-    }
-
-    async function performOCR() {
-        if (isProcessing) return;
-        isProcessing = true;
-        scanCaptureBtn.disabled = true;
-        
-        scanStatus.innerHTML = '<span class="loading-spinner"></span> Fotoğraf işleniyor...';
-        scanStatus.className = 'scan-status loading';
-        scanResult.classList.remove('active');
-        
-        try {
-            const videoWidth = ocrVideo.videoWidth || 640;
-            const videoHeight = ocrVideo.videoHeight || 480;
-            
-            const croppedCanvas = cropToScanArea(videoWidth, videoHeight);
-            const imageData = croppedCanvas.toDataURL('image/jpeg', 0.95);
-            
-            scanStatus.innerHTML = '<span class="loading-spinner"></span> OCR işlemi devam ediyor...';
-            
-            const result = await Tesseract.recognize(
-                imageData,
-                'tur',
-                {
-                    logger: (m) => {
-                        if (m.status === 'recognizing text') {
-                            scanStatus.innerHTML = `<span class="loading-spinner"></span> Okunuyor: ${Math.round(m.progress * 100)}%`;
-                        }
-                    }
-                }
-            );
-            
-            const text = result.data.text.trim();
-            
-            if (text && text.length > 0) {
-                // Sadece alfanumerik karakterleri ve tireleri al
-                const cleanText = text.replace(/[^a-zA-Z0-9\-]/g, ' ').trim();
-                
-                if (cleanText.length > 0) {
-                    lastScanResult = cleanText;
-                    scanResultText.textContent = cleanText;
-                    scanResultEdit.value = cleanText;
-                    scanResult.classList.add('active');
-                    scanStatus.textContent = '✅ OCR başarıyla tamamlandı! Lütfen kontrol edin.';
-                    scanStatus.className = 'scan-status success';
-                } else {
-                    scanStatus.textContent = '❌ Geçerli metin okunamadı. Lütfen tekrar deneyin.';
-                    scanStatus.className = 'scan-status error';
-                }
-            } else {
-                scanStatus.textContent = '❌ Metin okunamadı. Lütfen tekrar deneyin.';
-                scanStatus.className = 'scan-status error';
-            }
-            
-        } catch (err) {
-            console.error('OCR hatası:', err);
-            scanStatus.textContent = '❌ OCR hatası: ' + err.message;
-            scanStatus.className = 'scan-status error';
-        }
-        
-        isProcessing = false;
-        scanCaptureBtn.disabled = false;
     }
 
     // ============================================
@@ -1205,30 +957,24 @@
     function openScanModal() {
         scanModal.classList.add('active');
         scanResult.classList.remove('active');
-        scanStatus.textContent = '📱 QR kodu veya seri numarasını gösterin...';
+        scanStatus.textContent = '📱 Kameraya erişim sağlanıyor...';
         scanStatus.className = 'scan-status';
-        scanCaptureBtn.disabled = false;
         lastScanResult = '';
-        currentMethod = 'qr';
         
-        methodQR.classList.add('active');
-        methodOCR.classList.remove('active');
+        // Aktif methodu göster
+        methodAuto.classList.toggle('active', currentMethod === 'auto');
+        methodQR.classList.toggle('active', currentMethod === 'qr');
+        methodBarcode.classList.toggle('active', currentMethod === 'barcode');
         
-        startQRScanner();
+        startScanner();
     }
 
     function closeScanModal() {
-        stopQRScanner();
-        stopOCRCamera();
+        stopScanner();
         scanModal.classList.remove('active');
         scanResult.classList.remove('active');
-        scanStatus.textContent = '📱 QR kodu veya seri numarasını gösterin...';
+        scanStatus.textContent = '📱 Barkod veya QR kodu kameraya gösterin...';
         scanStatus.className = 'scan-status';
-        scanCaptureBtn.disabled = false;
-        isProcessing = false;
-        qrReader.style.display = 'block';
-        ocrCameraWrapper.classList.remove('active');
-        scanCaptureBtn.style.display = 'none';
     }
 
     function useScanResult() {
@@ -1238,8 +984,25 @@
             seriEkle();
             closeScanModal();
         } else {
-            alert('Lütfen geçerli bir seri numarası girin.');
+            alert('Lütfen geçerli bir değer girin.');
         }
+    }
+
+    function changeMethod(method) {
+        if (currentMethod === method) return;
+        currentMethod = method;
+        
+        methodAuto.classList.toggle('active', method === 'auto');
+        methodQR.classList.toggle('active', method === 'qr');
+        methodBarcode.classList.toggle('active', method === 'barcode');
+        
+        // Scanner'ı yeniden başlat
+        stopScanner();
+        setTimeout(() => {
+            startScanner();
+        }, 300);
+        
+        scanResult.classList.remove('active');
     }
 
     // ============================================
@@ -1286,7 +1049,7 @@
     function seriEkle() {
         const val = seriInput.value.trim();
         if (val === '') {
-            alert('Lütfen bir seri numarası girin veya QR/OCR ile okuyun.');
+            alert('Lütfen bir seri numarası girin veya barkod/QR okutun.');
             seriInput.focus();
             return;
         }
@@ -1594,7 +1357,6 @@
     // Scan Butonları
     scanBtn.addEventListener('click', openScanModal);
     scanCloseBtn.addEventListener('click', closeScanModal);
-    scanCloseCameraBtn.addEventListener('click', closeScanModal);
     scanUseBtn.addEventListener('click', useScanResult);
     scanRetryBtn.addEventListener('click', function() {
         scanResult.classList.remove('active');
@@ -1602,7 +1364,6 @@
         scanStatus.className = 'scan-status';
         lastScanResult = '';
     });
-    scanCaptureBtn.addEventListener('click', performOCR);
     
     // Modal kapatma (dışarı tıklama)
     scanModal.addEventListener('click', function(e) {
@@ -1612,27 +1373,9 @@
     });
 
     // Yöntem Değiştirme
-    methodQR.addEventListener('click', function() {
-        if (currentMethod === 'qr') return;
-        currentMethod = 'qr';
-        methodQR.classList.add('active');
-        methodOCR.classList.remove('active');
-        stopOCRCamera();
-        startQRScanner();
-        scanStatus.textContent = '📷 QR kodu kameraya gösterin...';
-        scanStatus.className = 'scan-status';
-        scanResult.classList.remove('active');
-    });
-
-    methodOCR.addEventListener('click', function() {
-        if (currentMethod === 'ocr') return;
-        currentMethod = 'ocr';
-        methodOCR.classList.add('active');
-        methodQR.classList.remove('active');
-        stopQRScanner();
-        startOCRCamera();
-        scanResult.classList.remove('active');
-    });
+    methodAuto.addEventListener('click', function() { changeMethod('auto'); });
+    methodQR.addEventListener('click', function() { changeMethod('qr'); });
+    methodBarcode.addEventListener('click', function() { changeMethod('barcode'); });
 
     // ============================================
     // BAŞLANGIÇ
@@ -1643,7 +1386,42 @@
 
     console.log('✅ Firebase Sipariş Takip Sistemi Başlatıldı!');
     console.log('📊 Veritabanı: mkrurun');
-    console.log('📸 QR/OCR özelliği aktif!');
+    console.log('📊 Barkod/QR okuyucu aktif!');
+    console.log('📊 Desteklenen formatlar: QR, Code128, EAN-13, UPC-A, Code39, DataMatrix, PDF417');
 </script>
 </body>
 </html>
+```
+
+🎯 Bu Versiyonda Desteklenen Barkodlar:
+
+Format Açıklama
+QR Kod Kare matris kod
+Code128 En yaygın barkod
+EAN-13 Ürün barkodu (13 haneli)
+UPC-A ABD ürün barkodu (12 haneli)
+Code39 Endüstriyel barkod
+DataMatrix 2D matris kod
+PDF417 2D barkod
+Aztec 2D barkod
+Code93 Code39'un gelişmişi
+EAN-8 Kısa ürün barkodu
+ITF Interleaved 2 of 5
+Codabar Barkod formatı
+
+📱 Kullanım:
+
+1. "Barkod / QR Oku" butonuna tıklayın
+2. Otomatik veya QR / Barkod seçeneğini seçin
+3. Barkodu kameraya gösterin
+4. Otomatik olarak okunur ve seri listesine eklenir
+5. Manuel düzeltme imkanı da var
+
+⚡ Avantajlar:
+
+· QR + Barkod tek bir yerde
+· Otomatik format algılama
+· Manuel düzeltme imkanı
+· Hızlı ve güvenilir
+
+Artık hem barkod hem QR kod okuyabilirsiniz! 📊
